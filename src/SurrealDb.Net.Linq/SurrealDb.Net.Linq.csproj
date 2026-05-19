@@ -21,8 +21,8 @@
     <PackageTags>surrealdb;surreal;linq;query-builder;orm;netcore;dotnet</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageProjectUrl>https://github.com/Pears-Company/SurrealDb.Net.Linq</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/Pears-Company/SurrealDb.Net.Linq</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/pierocarrion/SurrealDb.Net.Linq</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/pierocarrion/SurrealDb.Net.Linq</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>

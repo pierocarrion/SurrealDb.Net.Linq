@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet pack *)",
+      "PowerShell(dotnet pack *)",
+      "PowerShell(dotnet nuget push *)",
+      "Bash(git tag *)",
+      "Bash(git push *)",
+      "Bash(gh secret *)",
+      "PowerShell(gh secret *)"
+    ]
+  }
+}
