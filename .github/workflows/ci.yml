@@ -1,0 +1,29 @@
+name: ci
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+
+      - name: Restore
+        run: dotnet restore SurrealDb.Net.Linq.sln
+
+      - name: Build
+        run: dotnet build SurrealDb.Net.Linq.sln -c Release --no-restore
+
+      - name: Pack (dry)
+        run: dotnet pack src/SurrealDb.Net.Linq/SurrealDb.Net.Linq.csproj -c Release --no-build -o ./artifacts
