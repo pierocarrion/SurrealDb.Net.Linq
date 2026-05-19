@@ -1,0 +1,23 @@
+<Project>
+
+  <!--
+    Defaults for every test project under tests/. Inherits the repo-root
+    Directory.Build.props for language + analyzer settings, then layers test-
+    specific defaults so the shipped NuGet package never picks up test code:
+
+      * IsPackable=false       → 'dotnet pack' (solution-level) skips tests
+      * IsPublishable=false    → 'dotnet publish' skips tests
+      * GenerateDocumentationFile=false → no XML docs for test methods
+      * Test-only NoWarn suppressions (XML/Doc + naming conventions)
+  -->
+
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsPublishable>false</IsPublishable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591;CA1707;CA1812;CA1822;CA2007</NoWarn>
+  </PropertyGroup>
+
+</Project>

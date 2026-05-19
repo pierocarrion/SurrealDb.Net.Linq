@@ -1,8 +1,12 @@
 # SurrealDb.Net.Linq
 
+[![NuGet](https://img.shields.io/nuget/v/SurrealDb.Net.Linq.svg)](https://www.nuget.org/packages/SurrealDb.Net.Linq)
+
 A fluent, parameter-safe query builder for [SurrealDB](https://surrealdb.com) that plugs into the official [SurrealDb.Net](https://www.nuget.org/packages/SurrealDb.Net) SDK.
 
-Stop concatenating SurrealQL strings by hand. Stop sprinkling `RawQuery` calls across your repositories. Build typed `SELECT` / `LIVE SELECT` / `CREATE` / `UPDATE` / `UPSERT` / `DELETE` / `KILL` statements with an EF-Core-shaped surface, and execute them with one extension method on `ISurrealDbClient`.
+NuGet package: **<https://www.nuget.org/packages/SurrealDb.Net.Linq>**
+
+Stop concatenating SurrealQL strings by hand. Stop sprinkling `RawQuery` calls across your repositories. Build typed `SELECT` / `LIVE SELECT` / `CREATE` / `UPDATE` / `UPSERT` / `DELETE` / `KILL` statements with an EF-Core-shaped surface — including typed `Expression<Func<T, bool>>` `Where` lambdas — and execute them with one extension method on `ISurrealDbClient`.
 
 ```csharp
 using SurrealDb.Net.Linq;
@@ -44,6 +48,36 @@ SurrealQuery.From("employee")
     .Fetch("manager")
     .Build();
 ```
+
+### SELECT with typed `Where` lambdas
+
+`SurrealQuery.From<T>(table)` returns a generic builder whose `Where` /
+`And` / `Or` accept `Expression<Func<T, bool>>` predicates. Field names are
+derived from `[JsonPropertyName("…")]` if present, otherwise from the property
+name in snake_case (`HireDate` → `hire_date`).
+
+```csharp
+var department = "engineering";
+var minSalary  = 50_000;
+
+SurrealQuery.From<Employee>("employee")
+    .Select("id", "first_name", "department")
+    .Where(e => e.Department == department && e.Salary >= minSalary && e.Active)
+    .OrderBy("hire_date", SortDirection.Desc)
+    .Limit(50)
+    .Build();
+```
+
+Supported in the visitor (MVP scope): `==` `!=` `<` `<=` `>` `>=` `&&` `||` `!`,
+member access (including nested chains like `u.Address.City`), boolean member
+shorthand (`u => u.Active`), null comparisons (`u.Email == null` →
+`email IS NONE`), captured locals/method calls (parameterised), `string.Contains`
+/ `StartsWith` / `EndsWith`, `string.IsNullOrEmpty`, and collection `Contains`
+(local collection → `field IN $p`, member collection → `field CONTAINS $p`).
+
+Anything outside that surface (graph traversals, subqueries, `math::*` calls,
+projections) raises `NotSupportedException` — drop down to `WhereRaw(...)` or
+`SurrealQuery.Raw(...)`.
 
 ### LIVE SELECT
 
@@ -147,13 +181,63 @@ foreach (var id in ids.OfType<string>())
 }
 ```
 
+## Contributing
+
+Bug reports and pull requests are welcome on
+[GitHub](https://github.com/pierocarrion/SurrealDb.Net.Linq).
+
+### Reporting a bug
+
+Open an [issue](https://github.com/pierocarrion/SurrealDb.Net.Linq/issues/new)
+and include:
+
+1. **What you tried** — the smallest builder chain that reproduces the problem,
+   ideally as a copy-pasteable snippet.
+2. **What you expected** — the SurrealQL you wanted the builder to emit, or the
+   client behaviour you expected.
+3. **What you got** — the actual generated SurrealQL (call `.Build().Sql` and
+   inspect `.Parameters`) and/or the exception message + stack trace.
+4. **Environment** — SurrealDB server version, `SurrealDb.Net` version,
+   `SurrealDb.Net.Linq` version, target framework.
+
+For lambda translation issues, paste the predicate and the
+`NotSupportedException` message — the visitor explicitly tells you which node
+it couldn't translate.
+
+### Submitting a pull request
+
+1. Fork the repo and create a topic branch from `master`
+   (`git checkout -b fix/short-description`).
+2. Build and test locally — both must be green:
+   ```bash
+   dotnet build  -c Release
+   dotnet test
+   ```
+3. Add or update tests under `tests/SurrealDb.Net.Linq.Tests/` for any behaviour
+   change. The existing suite (118 tests) covers the public builder surface and
+   every shape the expression visitor accepts — follow the same patterns.
+4. Keep the public API minimal. New surface lands in `src/SurrealDb.Net.Linq/`;
+   internals (anything reused only by builders) goes under `Internal/`.
+5. Update `CHANGELOG.md` under the `[Unreleased]` section.
+6. Open a PR with a short description of the problem and the chosen fix.
+
+The package itself ships only the library DLL + XML docs (~65 KB nupkg) — test
+projects live under `tests/` with `IsPackable=false` so they never end up in
+the published artifact.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
 
 ## Status
 
-`0.2.x` — early release. The builder surface is the EF-Core-shaped subset that's been battle-tested in production (multi-tenant SaaS on SurrealDB v3). It is not a full LINQ-to-SurrealQL provider — there is no `Expression<Func<T, bool>>` translation, by design. If you want LINQ expression trees, this is not that library.
+`0.2.x` — early release. The builder surface is the EF-Core-shaped subset
+that's been battle-tested in production (multi-tenant SaaS on SurrealDB v3).
+`Expression<Func<T, bool>>` translation is supported for the MVP scope listed
+in [SELECT with typed Where lambdas](#select-with-typed-where-lambdas); this
+is **not** a full LINQ-to-SurrealQL provider (no `IQueryable`, no projection /
+`OrderBy` / `Select` lambdas, no graph traversal). If you want full LINQ
+expression trees with composition, this is not that library.
 
 ### Changelog
 

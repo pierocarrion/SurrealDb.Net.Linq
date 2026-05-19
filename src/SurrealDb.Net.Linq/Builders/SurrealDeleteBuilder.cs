@@ -16,6 +16,9 @@ public sealed class SurrealDeleteBuilder
         _where = new WhereClauseBuilder(_bag);
     }
 
+    internal ParameterBag Bag => _bag;
+    internal void AddRawWhere(string fragment, string conjunction) => _where.AddRaw(fragment, conjunction);
+
     public SurrealDeleteBuilder Where(string field, SurrealOperator op, object? value = null)
     {
         _where.Add(field, op, value, conjunction: "AND");

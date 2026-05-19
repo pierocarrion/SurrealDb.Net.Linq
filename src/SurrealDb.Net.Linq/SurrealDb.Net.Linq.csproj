@@ -33,4 +33,8 @@
     <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="all" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="SurrealDb.Net.Linq.Tests" />
+  </ItemGroup>
+
 </Project>

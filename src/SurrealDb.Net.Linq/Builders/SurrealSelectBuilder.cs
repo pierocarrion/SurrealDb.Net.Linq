@@ -31,6 +31,9 @@ public sealed class SurrealSelectBuilder
         _where = new WhereClauseBuilder(_bag);
     }
 
+    internal ParameterBag Bag => _bag;
+    internal void AddRawWhere(string fragment, string conjunction) => _where.AddRaw(fragment, conjunction);
+
     /// <summary>Project explicit columns. Replaces any prior <see cref="Field"/>/<see cref="Select"/>/<see cref="SelectValue"/> calls.</summary>
     public SurrealSelectBuilder Select(params string[] fields)
     {

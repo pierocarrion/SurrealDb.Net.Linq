@@ -6,6 +6,24 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Typed builder entry points: `SurrealQuery.From<T>(table)`,
+  `SurrealQuery.Live<T>(table)`, and `SurrealQuery.Delete<T>(table)` return
+  generic builders that accept `Expression<Func<T, bool>>` predicates in
+  `Where` / `And` / `Or`.
+- `ExpressionToWhere` visitor: translates comparison + logical operators,
+  member access (including nested chains), boolean member shorthand, null
+  comparisons (`IS NONE` / `IS NOT NONE`), closure capture, `string.Contains` /
+  `StartsWith` / `EndsWith`, `string.IsNullOrEmpty`, and collection `Contains`
+  (`IN` and `CONTAINS`). Unsupported shapes throw `NotSupportedException` with
+  a pointer to `WhereRaw`.
+- `MemberNameResolver`: maps CLR members to SurrealQL field names —
+  `[JsonPropertyName("…")]` wins, otherwise snake_case fallback.
+- xUnit test project under `tests/SurrealDb.Net.Linq.Tests/` covering the
+  public builder surface, every supported visitor shape, and the failure mode
+  for unsupported expressions. `IsPackable=false` so tests never ship in the
+  NuGet package.
+
 ### Changed
 - Repository restructure: source files split per type into `Abstractions/`,
   `Builders/`, `Extensions/`, and `Internal/` folders.

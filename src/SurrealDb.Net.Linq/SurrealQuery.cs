@@ -17,8 +17,18 @@ public static class SurrealQuery
     /// <summary>Begin a <c>SELECT … FROM &lt;target&gt;</c> statement.</summary>
     public static SurrealSelectBuilder From(string target) => new(target, isLive: false);
 
+    /// <summary>
+    /// Begin a typed <c>SELECT … FROM &lt;target&gt;</c> statement. Returns a
+    /// builder that accepts <c>Expression&lt;Func&lt;T, bool&gt;&gt;</c>
+    /// predicates in <c>Where</c>/<c>And</c>/<c>Or</c>.
+    /// </summary>
+    public static SurrealSelectBuilder<T> From<T>(string target) => new(target, isLive: false);
+
     /// <summary>Begin a <c>LIVE SELECT … FROM &lt;target&gt;</c> statement.</summary>
     public static SurrealSelectBuilder Live(string target) => new(target, isLive: true);
+
+    /// <summary>Begin a typed <c>LIVE SELECT … FROM &lt;target&gt;</c> statement.</summary>
+    public static SurrealSelectBuilder<T> Live<T>(string target) => new(target, isLive: true);
 
     /// <summary>Begin a <c>CREATE &lt;target&gt;</c> statement.</summary>
     public static SurrealCreateBuilder Create(string target) => new(target);
@@ -42,6 +52,9 @@ public static class SurrealQuery
 
     /// <summary>Begin a <c>DELETE &lt;target&gt;</c> statement.</summary>
     public static SurrealDeleteBuilder Delete(string target) => new(target);
+
+    /// <summary>Begin a typed <c>DELETE &lt;target&gt;</c> statement with Expression-based predicates.</summary>
+    public static SurrealDeleteBuilder<T> Delete<T>(string target) => new(target);
 
     /// <summary>Build a <c>KILL $live</c> statement.</summary>
     public static ISurrealCommand Kill(Guid liveId) =>

@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>SurrealDb.Net.Linq.Tests</RootNamespace>
+    <AssemblyName>SurrealDb.Net.Linq.Tests</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <!--
+      The library declares SurrealDb.Net as PrivateAssets="all", so tests must
+      bring it in directly.
+    -->
+    <PackageReference Include="SurrealDb.Net" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SurrealDb.Net.Linq\SurrealDb.Net.Linq.csproj" />
+  </ItemGroup>
+
+</Project>
