@@ -6,6 +6,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-05-19
+
 ### Added
 - Typed builder entry points: `SurrealQuery.From<T>(table)`,
   `SurrealQuery.Live<T>(table)`, and `SurrealQuery.Delete<T>(table)` return
@@ -48,6 +50,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `ExecuteScalarAsync<T>`, `ExecuteListAsync<T>`, `ExecuteNoResultAsync`,
   `InsertWithIdAsync`.
 
-[Unreleased]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.2.1...v0.3.0
 [0.2.0]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/pierocarrion/SurrealDb.Net.Linq/releases/tag/v0.1.0
