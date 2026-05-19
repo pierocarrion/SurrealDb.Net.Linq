@@ -6,6 +6,24 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-05-19
+
+### Added
+- `SurrealDb.Net.Linq.Cbor` namespace with the CBOR plumbing that restores
+  SurrealDB-friendly defaults the official `SurrealDb.Net 0.10.x` package
+  dropped:
+  - `SnakeCaseCborNamingConvention` — `INamingConvention` that maps CLR member
+    names to snake_case (`HireDate` → `hire_date`, `User_Id` → `user_id`,
+    already-snake_case names preserved). Honors `[Column("name")]` overrides.
+  - `CborMapToDictionaryConverter` — converter for
+    `Dictionary<string, object?>?` so rows that mix typed fields with
+    free-form `object FLEXIBLE` sub-objects (e.g. `country_catalog`) decode
+    without throwing `CborException: Expected major type Map (5)`.
+  - `CborOptions.UseSurrealSnakeCase()` — single-call wire-up of the two above.
+    Plug into `new SurrealDbClient(opts, configureCborOptions: o => o.UseSurrealSnakeCase())`.
+- `Dahomey.Cbor` is now a regular (public) `PackageReference` since the new
+  API surface exposes types from it; pinned to `1.26.1` to match SurrealDb.Net.
+
 ## [0.3.0] - 2026-05-19
 
 ### Added
@@ -50,7 +68,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `ExecuteScalarAsync<T>`, `ExecuteListAsync<T>`, `ExecuteNoResultAsync`,
   `InsertWithIdAsync`.
 
-[Unreleased]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.2.1...v0.3.0
 [0.2.0]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/pierocarrion/SurrealDb.Net.Linq/releases/tag/v0.1.0

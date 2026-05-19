@@ -10,9 +10,9 @@
 
   <PropertyGroup Label="Package">
     <PackageId>SurrealDb.Net.Linq</PackageId>
-    <Version>0.2.0</Version>
-    <Description>Fluent, parameter-safe query builder for SurrealDB. Plugs into the official SurrealDb.Net SDK and provides SELECT / LIVE SELECT / CREATE / UPDATE / UPSERT / DELETE / KILL builders plus execution extensions on ISurrealDbClient. Every literal becomes a CBOR-bound parameter — no SQL injection, no hand-spliced SurrealQL.</Description>
-    <PackageTags>surrealdb;surreal;linq;query-builder;orm;netcore;dotnet</PackageTags>
+    <Version>0.3.1</Version>
+    <Description>Fluent, parameter-safe query builder for SurrealDB. Plugs into the official SurrealDb.Net SDK and provides SELECT / LIVE SELECT / CREATE / UPDATE / UPSERT / DELETE / KILL builders plus execution extensions on ISurrealDbClient. Every literal becomes a CBOR-bound parameter — no SQL injection, no hand-spliced SurrealQL. Also ships CBOR plumbing (`UseSurrealSnakeCase()`) that restores the snake_case naming convention and dynamic-map decoder that SurrealDb.Net dropped in 0.10.x.</Description>
+    <PackageTags>surrealdb;surreal;linq;query-builder;orm;netcore;dotnet;cbor</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
@@ -30,6 +30,13 @@
       SurrealDb.Net without colliding with a transitive NuGet copy.
     -->
     <PackageReference Include="SurrealDb.Net" PrivateAssets="all" />
+    <!--
+      Dahomey.Cbor is a public dependency: our `Cbor/` API surface exposes
+      `INamingConvention` and `CborConverterBase<T>` from this package, so
+      consumers need it on their compile classpath too. Pin to the same version
+      SurrealDb.Net 0.10.x ships, to avoid binding-redirect headaches.
+    -->
+    <PackageReference Include="Dahomey.Cbor" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="all" />
   </ItemGroup>
 
