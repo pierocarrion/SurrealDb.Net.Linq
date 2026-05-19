@@ -157,5 +157,4 @@ MIT — see [LICENSE](LICENSE).
 
 ### Changelog
 
-- **0.2.0** — `SurrealDb.Net` is now a `PrivateAssets="all"` dependency. Consumers must install `SurrealDb.Net` themselves. This lets projects with a vendored or patched `SurrealDb.Net` avoid dual-DLL conflicts.
-- **0.1.0** — initial release.
+See [CHANGELOG.md](CHANGELOG.md).

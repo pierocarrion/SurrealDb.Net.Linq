@@ -1,0 +1,20 @@
+<Project>
+
+  <!--
+    Central Package Management: every PackageVersion lives here, csproj files
+    reference packages without a Version attribute. Adding a new package or
+    bumping a version means editing only this file.
+    https://learn.microsoft.com/nuget/consume-packages/central-package-management
+  -->
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageVersion Include="SurrealDb.Net" Version="0.10.2" />
+    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
+  </ItemGroup>
+
+</Project>
