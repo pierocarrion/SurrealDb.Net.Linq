@@ -23,7 +23,10 @@ Every literal becomes a named parameter (`$p0`, `$p1`, …) — no SQL injection
 
 ```bash
 dotnet add package SurrealDb.Net.Linq
+dotnet add package SurrealDb.Net
 ```
+
+Both packages are required. `SurrealDb.Net.Linq` declares `SurrealDb.Net` as a `PrivateAssets="all"` dependency on purpose: it does **not** ship `SurrealDb.Net` transitively, so downstream projects can pin their own version (including a vendored / patched copy) without a dual-DLL conflict. If you just want the regular SDK, install both as shown above.
 
 Target frameworks: `net8.0`, `net9.0`, `net10.0`.
 
@@ -150,4 +153,9 @@ MIT — see [LICENSE](LICENSE).
 
 ## Status
 
-`0.1.x` — early release. The builder surface is the EF-Core-shaped subset that's been battle-tested in production (multi-tenant SaaS on SurrealDB v3). It is not a full LINQ-to-SurrealQL provider — there is no `Expression<Func<T, bool>>` translation, by design. If you want LINQ expression trees, this is not that library.
+`0.2.x` — early release. The builder surface is the EF-Core-shaped subset that's been battle-tested in production (multi-tenant SaaS on SurrealDB v3). It is not a full LINQ-to-SurrealQL provider — there is no `Expression<Func<T, bool>>` translation, by design. If you want LINQ expression trees, this is not that library.
+
+### Changelog
+
+- **0.2.0** — `SurrealDb.Net` is now a `PrivateAssets="all"` dependency. Consumers must install `SurrealDb.Net` themselves. This lets projects with a vendored or patched `SurrealDb.Net` avoid dual-DLL conflicts.
+- **0.1.0** — initial release.

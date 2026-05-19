@@ -14,7 +14,7 @@
 
   <PropertyGroup Label="Package">
     <PackageId>SurrealDb.Net.Linq</PackageId>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <Authors>Piero Carrion</Authors>
     <Company>Piero Carrion</Company>
     <Description>Fluent, parameter-safe query builder for SurrealDB. Plugs into the official SurrealDb.Net SDK and provides SELECT / LIVE SELECT / CREATE / UPDATE / UPSERT / DELETE / KILL builders plus execution extensions on ISurrealDbClient. Every literal becomes a CBOR-bound parameter — no SQL injection, no hand-spliced SurrealQL.</Description>
@@ -37,7 +37,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="SurrealDb.Net" Version="0.10.2" />
+    <!--
+      SurrealDb.Net is required to compile this library, but we intentionally
+      do NOT propagate it to consumers (PrivateAssets="all"). Consumers must
+      install SurrealDb.Net (or a compatible local/vendored copy) themselves.
+      Rationale: lets downstream projects keep a patched or vendored
+      SurrealDb.Net without colliding with a transitive NuGet copy.
+    -->
+    <PackageReference Include="SurrealDb.Net" Version="0.10.2" PrivateAssets="all" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
   </ItemGroup>
 
