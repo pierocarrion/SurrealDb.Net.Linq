@@ -6,6 +6,20 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-05-19
+
+### Changed
+- `CborOptions.UseSurrealSnakeCase()` no longer registers
+  `CborMapToDictionaryConverter` as the global converter for
+  `Dictionary<string, object?>`. Registering it globally hijacked the WRITE
+  path that `SurrealDb.Net` uses to serialize `RawQuery` parameter maps,
+  raising `NotSupportedException` on every parameterized query. The converter
+  remains available for selective opt-in via
+  `[CborConverter(typeof(CborMapToDictionaryConverter))]` on row fields that
+  carry free-form `object FLEXIBLE` sub-objects.
+- `CborMapToDictionaryConverter` is documented as read-only and now throws a
+  clearer error from `Write` to surface accidental global registration.
+
 ## [0.3.1] - 2026-05-19
 
 ### Added
@@ -68,7 +82,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `ExecuteScalarAsync<T>`, `ExecuteListAsync<T>`, `ExecuteNoResultAsync`,
   `InsertWithIdAsync`.
 
-[Unreleased]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.2.1...v0.3.0
 [0.2.0]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.1.0...v0.2.0
