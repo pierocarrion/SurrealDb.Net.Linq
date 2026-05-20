@@ -1,41 +1,70 @@
 using System.Runtime.CompilerServices;
+using Dahomey.Cbor;
 using Dahomey.Cbor.Serialization;
 using Dahomey.Cbor.Serialization.Converters;
 
 namespace SurrealDb.Net.Linq.Cbor;
 
 /// <summary>
-/// Reads an arbitrary CBOR map into <see cref="Dictionary{TKey, TValue}"/>
-/// (<c>string</c> → <c>object?</c>). Nested maps become Dictionary, arrays
-/// become <see cref="List{T}"/>, primitives stay as-is.
+/// Bridges CBOR ↔ <see cref="Dictionary{TKey, TValue}"/>
+/// (<c>string</c> → <c>object?</c>) end-to-end.
 ///
-/// <para><b>Read-only.</b> Intended for fields the consumer explicitly opts in
-/// to (via <c>[CborConverter(typeof(CborMapToDictionaryConverter))]</c>) when
-/// the wire shape is a free-form <c>object FLEXIBLE</c> sub-object. The
-/// global default <see cref="Dictionary{TKey, TValue}"/> converter shipped by
-/// Dahomey.Cbor handles writes correctly and is left in place — overriding
-/// it would break <c>RawQuery</c> parameter serialization (whose dictionary
-/// holds arbitrary runtime types we cannot enumerate here).</para>
+/// <para><b>Read:</b> any CBOR map is materialised to a Dictionary; nested
+/// maps become Dictionary, arrays become <see cref="List{T}"/>, primitives
+/// stay as-is. Required because Dahomey.Cbor 1.26.1's stock
+/// <c>DictionaryConverter&lt;string, object&gt;</c> resolves the value
+/// converter to <c>ObjectConverter&lt;object&gt;</c> at compile-time, which
+/// expects a CBOR Map for every value — so SurrealDB rows that carry mixed
+/// primitives inside an <c>object</c> column (e.g. <c>country_catalog.working_hours</c>,
+/// <c>customer.document</c>) throw <c>CborException: Expected major type Map (5)</c>
+/// the moment any value is not a map.</para>
+///
+/// <para><b>Write:</b> dispatches each value by runtime type. Primitives are
+/// emitted directly; nested dictionaries and lists recurse; complex types
+/// (<see cref="DateTime"/>, <see cref="DateTimeOffset"/>, <see cref="Guid"/>,
+/// <see cref="decimal"/>, SurrealDB's <c>RecordId</c>, …) delegate to the
+/// typed converter registered in the host <see cref="CborOptions"/> via the
+/// non-generic <c>ICborConverter.Write(ref CborWriter, object)</c>
+/// surface. This matches what Dahomey would do natively for
+/// <c>Dictionary&lt;string, object&gt;</c> if the read-side override were
+/// not registered — making it safe to register the converter globally on
+/// <see cref="CborOptions"/> without breaking <c>RawQuery</c> parameter
+/// serialization.</para>
 /// </summary>
 public sealed class CborMapToDictionaryConverter : CborConverterBase<Dictionary<string, object?>?>
 {
+    private readonly CborOptions _options;
+
+    /// <summary>
+    /// Constructs the converter. <paramref name="options"/> is captured so the
+    /// Write side can delegate non-primitive value writes to the host
+    /// converter registry (RecordId, DateTime, DateTimeOffset, etc.).
+    /// </summary>
+    public CborMapToDictionaryConverter(CborOptions options)
+    {
+        _options = options ?? throw new ArgumentNullException(nameof(options));
+    }
+
     /// <inheritdoc />
     public override Dictionary<string, object?>? Read(ref CborReader reader) =>
         ReadNullableMap(ref reader);
 
     /// <inheritdoc />
-    /// <remarks>
-    /// Not supported on purpose — see class remarks. If you need a custom
-    /// write path, register a different converter against the host
-    /// <see cref="Dahomey.Cbor.CborOptions"/>.
-    /// </remarks>
-    public override void Write(ref CborWriter writer, Dictionary<string, object?>? value) =>
-        throw new NotSupportedException(
-            "CborMapToDictionaryConverter is read-only. Do not register it as the global converter " +
-            "for Dictionary<string, object?> — Dahomey.Cbor's default Write path handles outbound " +
-            "RawQuery parameter maps correctly. Apply this converter selectively via " +
-            "`[CborConverter(typeof(CborMapToDictionaryConverter))]` on the specific row fields that " +
-            "carry free-form `object FLEXIBLE` sub-objects.");
+    public override void Write(ref CborWriter writer, Dictionary<string, object?>? value)
+    {
+        if (value is null)
+        {
+            writer.WriteNull();
+            return;
+        }
+        writer.WriteBeginMap(value.Count);
+        foreach (var kv in value)
+        {
+            writer.WriteString(kv.Key);
+            WriteValue(ref writer, kv.Value);
+        }
+        writer.WriteEndMap(value.Count);
+    }
 
     internal static Dictionary<string, object?>? ReadNullableMap(ref CborReader reader)
     {
@@ -136,5 +165,72 @@ public sealed class CborMapToDictionaryConverter : CborConverterBase<Dictionary<
     {
         reader.SkipDataItem();
         return null;
+    }
+
+    private void WriteValue(ref CborWriter writer, object? value)
+    {
+        switch (value)
+        {
+            case null: writer.WriteNull(); return;
+            case bool b: writer.WriteBoolean(b); return;
+            case string s: writer.WriteString(s); return;
+            case sbyte sb: writer.WriteInt64(sb); return;
+            case short sh: writer.WriteInt64(sh); return;
+            case int i: writer.WriteInt64(i); return;
+            case long l: writer.WriteInt64(l); return;
+            case byte by: writer.WriteUInt64(by); return;
+            case ushort ush: writer.WriteUInt64(ush); return;
+            case uint u: writer.WriteUInt64(u); return;
+            case ulong ul: writer.WriteUInt64(ul); return;
+            case float f: writer.WriteSingle(f); return;
+            case double d: writer.WriteDouble(d); return;
+            case Dictionary<string, object?> dict:
+                WriteDict(ref writer, dict);
+                return;
+            case IEnumerable<object?> list:
+                WriteList(ref writer, list);
+                return;
+        }
+
+        // Everything else (RecordId, DateTime, DateTimeOffset, Guid, decimal,
+        // user-defined records, …) dispatches to the typed converter in the
+        // host CborOptions registry via the non-generic
+        // `ICborConverter.Write(ref CborWriter, object)` surface — same path
+        // Dahomey.Cbor uses internally when value-type erasure (`object`)
+        // hides the runtime type.
+        var runtimeType = value.GetType();
+        var converter = _options.Registry.ConverterRegistry.Lookup(runtimeType);
+        if (converter is null)
+        {
+            throw new CborException(
+                $"No CBOR converter registered for runtime type '{runtimeType}'. Register one via " +
+                $"`options.Registry.ConverterRegistry.RegisterConverter(...)` before passing values of this " +
+                $"type inside a Dictionary<string, object?>.");
+        }
+        converter.Write(ref writer, value);
+    }
+
+    private void WriteDict(ref CborWriter writer, Dictionary<string, object?> dict)
+    {
+        writer.WriteBeginMap(dict.Count);
+        foreach (var kv in dict)
+        {
+            writer.WriteString(kv.Key);
+            WriteValue(ref writer, kv.Value);
+        }
+        writer.WriteEndMap(dict.Count);
+    }
+
+    private void WriteList(ref CborWriter writer, IEnumerable<object?> list)
+    {
+        // Materialise so we can write the array length up-front (CBOR
+        // length-prefixed arrays are Dahomey.Cbor's default).
+        var array = list as IList<object?> ?? list.ToList();
+        writer.WriteBeginArray(array.Count);
+        for (var i = 0; i < array.Count; i++)
+        {
+            WriteValue(ref writer, array[i]);
+        }
+        writer.WriteEndArray(array.Count);
     }
 }
