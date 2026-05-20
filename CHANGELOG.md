@@ -6,6 +6,31 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-05-19
+
+### Added
+- `CborMapToDictionaryConverter` now implements a fully working `Write` path:
+  it dispatches each value by runtime type (primitives written directly;
+  nested dictionaries / lists recurse; complex types — `DateTime`,
+  `DateTimeOffset`, `Guid`, `decimal`, SurrealDB `RecordId`, etc. — delegate
+  to the host `CborOptions` registry via the non-generic
+  `ICborConverter.Write(ref CborWriter, object)` surface).
+- `CborOptions.UseSurrealSnakeCase()` now registers
+  `CborMapToDictionaryConverter` globally as the converter for
+  `Dictionary<string, object?>`. This fixes a second class of `[XX] Expected
+  major type Map (5)` failures: Dahomey.Cbor 1.26.1's stock
+  `DictionaryConverter<string, object>` resolves each value via
+  `ObjectConverter<object>` (which expects a Map), so any SurrealDB row with
+  an `object FLEXIBLE` column (e.g. `country_catalog.working_hours`,
+  `customer.document`) explodes the moment it carries a primitive value.
+  The new write path keeps `RawQuery`'s parameter map serialization
+  behaviour identical to Dahomey's default.
+
+### Removed
+- The selective-opt-in guidance for `CborMapToDictionaryConverter` —
+  it's now safe (and recommended) to register globally via
+  `UseSurrealSnakeCase()`.
+
 ## [0.3.3] - 2026-05-19
 
 ### Added
@@ -100,7 +125,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `ExecuteScalarAsync<T>`, `ExecuteListAsync<T>`, `ExecuteNoResultAsync`,
   `InsertWithIdAsync`.
 
-[Unreleased]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.3.3...HEAD
+[Unreleased]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.3.4...HEAD
+[0.3.4]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.3.0...v0.3.1
