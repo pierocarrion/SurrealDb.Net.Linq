@@ -6,6 +6,24 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-05-19
+
+### Added
+- `DateTimeOffsetConverter` — handles SurrealDB's `tag(12) [seconds, nanos]`
+  datetime wire shape for `DateTimeOffset`. The official `SurrealDb.Net 0.10.x`
+  package only registers a converter for `DateTime`; `DateTimeOffset` falls
+  back to Dahomey's generic `ObjectConverter<DateTimeOffset>`, which expects
+  a CBOR Map and throws `[XX] Expected major type Map (5)` the instant any
+  row with a non-null `DateTimeOffset` column (e.g. `created_at`,
+  `updated_at`) is round-tripped through `Select<T>(table)` or
+  `Select<T>(RecordId)`.
+- `CborOptions.UseSurrealSnakeCase()` now also registers
+  `DateTimeOffsetConverter` so the fix is automatic for every consumer.
+
+### Fixed
+- `Select<T>(table)` / `Select<T>(RecordId)` over rows with `DateTimeOffset`
+  members no longer fails with `CborException: Expected major type Map (5)`.
+
 ## [0.3.2] - 2026-05-19
 
 ### Changed
@@ -82,7 +100,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `ExecuteScalarAsync<T>`, `ExecuteListAsync<T>`, `ExecuteNoResultAsync`,
   `InsertWithIdAsync`.
 
-[Unreleased]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.3.3...HEAD
+[0.3.3]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.2.1...v0.3.0
