@@ -6,20 +6,16 @@ namespace SurrealDb.Net.Linq.Cbor;
 
 /// <summary>
 /// Reads an arbitrary CBOR map into <see cref="Dictionary{TKey, TValue}"/>
-/// (<c>string</c> → <c>object?</c>), or <c>null</c> if the wire value is null.
-/// Nested maps become <see cref="Dictionary{TKey, TValue}"/>, arrays become
-/// <see cref="List{T}"/>, primitives stay as-is.
+/// (<c>string</c> → <c>object?</c>). Nested maps become Dictionary, arrays
+/// become <see cref="List{T}"/>, primitives stay as-is.
 ///
-/// <para>Required because Dahomey.Cbor's default object converter trips on
-/// SurrealDB row responses that mix typed fields with free-form sub-objects
-/// (e.g. <c>country_catalog.working_hours</c> as <c>object FLEXIBLE</c>): the
-/// default path expects a CLR <see cref="Type"/> hint per field, can't pick
-/// one for a dynamic map, and throws <c>CborException: Expected major type
-/// Map (5)</c>. This converter binds the type directly so any incoming map
-/// shape is accepted.</para>
-///
-/// <para>Write is intentionally not supported — callers that need to send a
-/// dynamic dictionary should pass it through a typed parameter instead.</para>
+/// <para><b>Read-only.</b> Intended for fields the consumer explicitly opts in
+/// to (via <c>[CborConverter(typeof(CborMapToDictionaryConverter))]</c>) when
+/// the wire shape is a free-form <c>object FLEXIBLE</c> sub-object. The
+/// global default <see cref="Dictionary{TKey, TValue}"/> converter shipped by
+/// Dahomey.Cbor handles writes correctly and is left in place — overriding
+/// it would break <c>RawQuery</c> parameter serialization (whose dictionary
+/// holds arbitrary runtime types we cannot enumerate here).</para>
 /// </summary>
 public sealed class CborMapToDictionaryConverter : CborConverterBase<Dictionary<string, object?>?>
 {
@@ -28,8 +24,18 @@ public sealed class CborMapToDictionaryConverter : CborConverterBase<Dictionary<
         ReadNullableMap(ref reader);
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Not supported on purpose — see class remarks. If you need a custom
+    /// write path, register a different converter against the host
+    /// <see cref="Dahomey.Cbor.CborOptions"/>.
+    /// </remarks>
     public override void Write(ref CborWriter writer, Dictionary<string, object?>? value) =>
-        throw new NotSupportedException("Cannot write Dictionary<string, object?> back to CBOR.");
+        throw new NotSupportedException(
+            "CborMapToDictionaryConverter is read-only. Do not register it as the global converter " +
+            "for Dictionary<string, object?> — Dahomey.Cbor's default Write path handles outbound " +
+            "RawQuery parameter maps correctly. Apply this converter selectively via " +
+            "`[CborConverter(typeof(CborMapToDictionaryConverter))]` on the specific row fields that " +
+            "carry free-form `object FLEXIBLE` sub-objects.");
 
     internal static Dictionary<string, object?>? ReadNullableMap(ref CborReader reader)
     {
