@@ -10,7 +10,7 @@
 
   <PropertyGroup Label="Package">
     <PackageId>SurrealDb.Net.Linq</PackageId>
-    <Version>0.3.2</Version>
+    <Version>0.3.3</Version>
     <Description>Fluent, parameter-safe query builder for SurrealDB. Plugs into the official SurrealDb.Net SDK and provides SELECT / LIVE SELECT / CREATE / UPDATE / UPSERT / DELETE / KILL builders plus execution extensions on ISurrealDbClient. Every literal becomes a CBOR-bound parameter — no SQL injection, no hand-spliced SurrealQL. Also ships CBOR plumbing (`UseSurrealSnakeCase()`) that restores the snake_case naming convention and dynamic-map decoder that SurrealDb.Net dropped in 0.10.x.</Description>
     <PackageTags>surrealdb;surreal;linq;query-builder;orm;netcore;dotnet;cbor</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

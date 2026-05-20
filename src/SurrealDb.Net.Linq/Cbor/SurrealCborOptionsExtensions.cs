@@ -4,8 +4,7 @@ namespace SurrealDb.Net.Linq.Cbor;
 
 /// <summary>
 /// Hooks that restore SurrealDB-friendly CBOR defaults that the official
-/// <c>SurrealDb.Net</c> package dropped in 0.10.x (where the built-in naming
-/// convention now returns <c>member.Name</c> verbatim).
+/// <c>SurrealDb.Net</c> package dropped in 0.10.x (or never shipped at all).
 ///
 /// <para>Plug into <c>SurrealDb.Net</c> at construction time:</para>
 /// <code>
@@ -17,12 +16,18 @@ namespace SurrealDb.Net.Linq.Cbor;
 public static class SurrealCborOptionsExtensions
 {
     /// <summary>
-    /// Restores the snake_case naming convention the vendored fork of
-    /// <c>SurrealDb.Net</c> shipped. Apply this on every
-    /// <see cref="CborOptions"/> instance you create via SurrealDb.Net's
-    /// <c>configureCborOptions</c> hook so typed <c>Select&lt;T&gt;(table)</c>,
-    /// <c>Select&lt;T&gt;(RecordId)</c>, and <c>Create&lt;T&gt;</c> calls
-    /// round-trip against snake_case SurrealDB schemas.
+    /// Applies the SurrealDB-friendly CBOR defaults this library carries:
+    /// <list type="bullet">
+    ///   <item><description>snake_case <c>INamingConvention</c> — the vendored fork shipped it,
+    ///   the official package dropped it in 0.10.x and now returns
+    ///   <c>member.Name</c> verbatim.</description></item>
+    ///   <item><description>A converter for <see cref="DateTimeOffset"/> against SurrealDB's
+    ///   <c>tag(12) [seconds, nanos]</c> wire shape — the official package
+    ///   only registers one for <see cref="DateTime"/>, leaving
+    ///   <see cref="DateTimeOffset"/> to fall back to
+    ///   <c>ObjectConverter&lt;DateTimeOffset&gt;</c> which explodes with
+    ///   <c>"Expected major type Map (5)"</c> on the first non-null row.</description></item>
+    /// </list>
     /// </summary>
     /// <remarks>
     /// Does NOT touch the global <see cref="Dictionary{TKey, TValue}"/>
@@ -39,6 +44,10 @@ public static class SurrealCborOptionsExtensions
         if (options is null) throw new ArgumentNullException(nameof(options));
 
         options.DefaultNamingConvention = SnakeCaseCborNamingConvention.Instance;
+        options.Registry.ConverterRegistry.RegisterConverter(
+            typeof(DateTimeOffset),
+            new DateTimeOffsetConverter());
+
         return options;
     }
 }
