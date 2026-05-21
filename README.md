@@ -231,13 +231,41 @@ MIT — see [LICENSE](LICENSE).
 
 ## Status
 
-`0.2.x` — early release. The builder surface is the EF-Core-shaped subset
+`0.3.x` — early release. The builder surface is the EF-Core-shaped subset
 that's been battle-tested in production (multi-tenant SaaS on SurrealDB v3).
 `Expression<Func<T, bool>>` translation is supported for the MVP scope listed
 in [SELECT with typed Where lambdas](#select-with-typed-where-lambdas); this
 is **not** a full LINQ-to-SurrealQL provider (no `IQueryable`, no projection /
 `OrderBy` / `Select` lambdas, no graph traversal). If you want full LINQ
 expression trees with composition, this is not that library.
+
+### CBOR configuration
+
+The official `SurrealDb.Net 0.10.x` package dropped several CBOR defaults that
+SurrealDB v3 relies on. `SurrealDb.Net.Linq` restores them so rows decode
+correctly:
+
+```csharp
+using SurrealDb.Net.Linq.Cbor;
+
+var client = new SurrealDbClient(endpoint,
+    configureCborOptions: o => o.UseSurrealSnakeCase());
+```
+
+`UseSurrealSnakeCase()` registers:
+
+- `SnakeCaseCborNamingConvention` — maps CLR member names to snake_case
+  (`HireDate` → `hire_date`). Honors `[Column("name")]` overrides.
+- `CborMapToDictionaryConverter` — fixes `Expected major type Map (5)` errors
+  on rows that contain free-form `object FLEXIBLE` columns (e.g.
+  `country_catalog.working_hours`, `customer.document`).
+- `DateTimeOffsetConverter` — fixes the same error for `DateTimeOffset` columns
+  (`created_at`, `updated_at`, etc.) because the official package only registers
+  a converter for `DateTime`.
+
+Without this, any row containing a `DateTimeOffset` or an `object` field with a
+primitive value explodes during `Select<T>`. The call is optional but strongly
+recommended.
 
 ### Changelog
 
