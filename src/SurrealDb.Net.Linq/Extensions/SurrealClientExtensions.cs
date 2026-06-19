@@ -39,6 +39,40 @@ public static class SurrealClientExtensions
         return response.GetValue<List<T>>(0) ?? new List<T>();
     }
 
+    /// <summary>
+    /// Execute and project the first statement's first value to <c>long</c>.
+    /// Convenient for <c>SELECT VALUE count() FROM …</c> queries.
+    /// Returns 0 when the value is missing or cannot be cast.
+    /// </summary>
+    public static async Task<long> ExecuteCountAsync(
+        this ISurrealDbClient client,
+        ISurrealCommand command,
+        CancellationToken ct = default)
+    {
+        var response = await client.RawQuery(command.Sql, command.Parameters, ct).ConfigureAwait(false);
+        try
+        {
+            var value = response.GetValue<object>(0);
+            return value is null ? 0 : Convert.ToInt64(value);
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// Execute and return whether the first statement yielded at least one row.
+    /// </summary>
+    public static async Task<bool> ExecuteAnyAsync<T>(
+        this ISurrealDbClient client,
+        ISurrealCommand command,
+        CancellationToken ct = default)
+    {
+        var list = await client.ExecuteListAsync<T>(command, ct).ConfigureAwait(false);
+        return list.Count > 0;
+    }
+
     /// <summary>Execute and discard the result. For UPDATE / DELETE / KILL where you don't care about the rows.</summary>
     /// <remarks>
     /// Surfaces per-statement errors as <see cref="InvalidOperationException"/> so

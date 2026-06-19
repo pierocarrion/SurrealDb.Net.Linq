@@ -32,7 +32,7 @@ dotnet add package SurrealDb.Net
 
 Both packages are required. `SurrealDb.Net.Linq` declares `SurrealDb.Net` as a `PrivateAssets="all"` dependency on purpose: it does **not** ship `SurrealDb.Net` transitively, so downstream projects can pin their own version (including a vendored / patched copy) without a dual-DLL conflict. If you just want the regular SDK, install both as shown above.
 
-Target frameworks: `net8.0`, `net9.0`, `net10.0`.
+Target frameworks: `net8.0`, `net9.0`, `net10.0`, `netstandard2.1` (covers .NET Core 3.0+, .NET 5/6/7, Mono, Xamarin, Unity).
 
 ## Usage
 
@@ -123,6 +123,22 @@ SurrealQuery.Delete("session")
 SurrealQuery.Kill(liveQueryId);
 ```
 
+### Transactions
+
+Group multiple statements into a single atomic `BEGIN; … COMMIT;` command. Each statement keeps its own parameters; the builder automatically rewrites parameter names so collisions across statements cannot happen.
+
+```csharp
+var tx = SurrealQuery.BeginTransaction()
+    .Add(SurrealQuery.Create("audit").Set("action", "user_created").Build())
+    .Add(SurrealQuery.UpdateRecord(RecordId.From("user", id)).Set("active", true).Build())
+    .Commit()
+    .Build();
+
+await client.ExecuteNoResultAsync(tx);
+```
+
+Use `.Rollback()` instead of `.Commit()` to emit `BEGIN; … CANCEL;`.
+
 ### Raw escape hatch
 
 For exotic SurrealQL the builders don't cover (graph traversals, transactions, `math::*` functions):
@@ -142,7 +158,9 @@ Six extension methods on `ISurrealDbClient`:
 | `ExecuteAsync(cmd)` | `SurrealDbResponse` | full envelope |
 | `ExecuteScalarAsync<T>(cmd)` | `T?` | first statement → first value |
 | `ExecuteListAsync<T>(cmd)` | `List<T>` | first statement → row list |
-| `ExecuteNoResultAsync(cmd)` | `Task` | UPDATE/DELETE/KILL, surfaces ASSERT/UNIQUE errors |
+| `ExecuteCountAsync(cmd)` | `long` | first statement → first value cast to `long` |
+| `ExecuteAnyAsync<T>(cmd)` | `bool` | whether the first statement returned at least one row |
+| `ExecuteNoResultAsync(cmd)` | `Task` | UPDATE/DELETE/KILL/transactions, surfaces ASSERT/UNIQUE errors |
 | `InsertWithIdAsync(table, fields, idGenerator)` | `string` (new id) | row creation that survives Dahomey.Cbor 1.26.1 PascalCase-with-nested-objects deserialization |
 
 ### Why `InsertWithIdAsync`?

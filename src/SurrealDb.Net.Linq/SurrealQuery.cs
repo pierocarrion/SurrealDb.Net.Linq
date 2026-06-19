@@ -65,4 +65,7 @@ public static class SurrealQuery
         new SurrealCommand(sql, parameters is null
             ? new Dictionary<string, object?>()
             : new Dictionary<string, object?>(parameters));
+
+    /// <summary>Begin a multi-statement transaction builder.</summary>
+    public static SurrealTransactionBuilder BeginTransaction() => new();
 }

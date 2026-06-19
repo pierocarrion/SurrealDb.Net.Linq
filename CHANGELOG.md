@@ -6,6 +6,14 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Multi-target `netstandard2.1` in addition to `net8.0`, `net9.0` and `net10.0`. This lets the package run on .NET Core 3.0/3.1, .NET 5, 6 and 7, plus Mono, Xamarin and Unity. `System.Text.Json` is now an explicit package reference for the `netstandard2.1` target so consumers on older runtimes get a compatible assembly.
+- `SurrealQuery.BeginTransaction()` and `SurrealTransactionBuilder`: build multi-statement `BEGIN; … COMMIT;` / `BEGIN; … CANCEL;` transactions from existing `ISurrealCommand` instances. Parameter names are automatically rebased per statement (`$s0_p0`, `$s1_p0`, …) to avoid collisions.
+- `ExecuteCountAsync(this ISurrealDbClient, ISurrealCommand)` and `ExecuteAnyAsync<T>(this ISurrealDbClient, ISurrealCommand)` execution helpers.
+
+### Changed
+- Test project now multi-targets `net6.0` and `net8.0` to exercise the `netstandard2.1` library asset on an older runtime.
+
 ## [0.3.4] - 2026-05-19
 
 ### Added

@@ -16,6 +16,7 @@
     <PackageVersion Include="SurrealDb.Net" Version="0.10.2" />
     <PackageVersion Include="Dahomey.Cbor" Version="1.26.1" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
+    <PackageVersion Include="System.Text.Json" Version="8.0.5" />
   </ItemGroup>
 
   <ItemGroup Label="Tests">
