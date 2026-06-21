@@ -6,7 +6,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-## [0.7.0] - 2026-06-21
+## [0.8.0] - 2026-06-21
 
 ### Added
 - `CborOptions.UseSnakeCaseNaming()` / `UseDateTimeOffsetConverter()` /
@@ -28,7 +28,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `DateTimeOffset` / `Guid` dentro de columnas `object FLEXIBLE` se
   materialicen correctamente (hoy se ven como array suelto o null).
 
-## [0.6.0] - 2026-06-21
+## [0.7.0] - 2026-06-21
 
 ### Added
 - `SurrealInsertBuilder` (DML INSERT) — `Columns(params string[])`,
@@ -67,7 +67,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   accionable antes de que el bool-member shorthand los renderice como
   campos inexistentes.
 
-## [0.5.0] - 2026-06-21
+## [0.6.0] - 2026-06-21
 
 ### Added
 - `SurrealCreateBuilder<T>` con `Set<K>(Expression<Func<T,K>>, object?)`,
@@ -93,7 +93,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   backoff exponencial + jitter para reintentar "Transaction conflict".
 - 14 tests cubriendo generic builders, SurrealReturn enum, delete parity.
 
-## [0.4.0] - 2026-06-21
+## [0.5.0] - 2026-06-21
 
 ### Added
 - **CI**: build matrix (ubuntu/windows/macos), ejecución de `dotnet test` en
@@ -186,11 +186,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Icono del paquete NuGet** pospuesto a 0.5.0. Falta el PNG físico en
   `assets/icon.png` y el upload se hace desde fuera del chat.
 
-[Unreleased]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.5.0...v0.6.0
-[0.5.0]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.4.0...v0.5.0
-[0.4.0]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.3.4...v0.4.0
+[0.5.0]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.3.4...v0.5.0
 - `SurrealQuery.BeginTransaction()` and `SurrealTransactionBuilder`: build multi-statement `BEGIN; … COMMIT;` / `BEGIN; … CANCEL;` transactions from existing `ISurrealCommand` instances. Parameter names are automatically rebased per statement (`$s0_p0`, `$s1_p0`, …) to avoid collisions.
 - `ExecuteCountAsync(this ISurrealDbClient, ISurrealCommand)` and `ExecuteAnyAsync<T>(this ISurrealDbClient, ISurrealCommand)` execution helpers.
 

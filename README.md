@@ -249,7 +249,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Status
 
-`0.7.x` — early release. The builder surface is the EF-Core-shaped subset
+`0.8.x` — early release. The builder surface is the EF-Core-shaped subset
 that's been battle-tested in production (multi-tenant SaaS on SurrealDB v3),
 plus a growing set of SurrealQL clauses (INSERT, RELATE, set operations,
 CONTENT/MERGE/PATCH, SPLIT, EXPLAIN, PARALLEL, TIMEOUT, VERSION).
@@ -261,13 +261,13 @@ ToUpper/Trim/Replace/IsNullOrEmpty/IsNullOrWhiteSpace`, collection
 `Nullable<T>` null checks. Arithmetic, subqueries and graph traversal are
 not supported — drop down to `WhereRaw(...)` for those.
 
-### New in 0.7.x
+### New in 0.8.0
 
 - **Granular CBOR opt-ins**: `UseSnakeCaseNaming`, `UseDateTimeOffsetConverter`,
   `UseMapToDictionaryConverter` — pick only what you need.
 - **CodeQL + Dependabot** enabled.
 
-### New in 0.6.0
+### New in 0.7.0
 
 - **`SurrealQuery.Insert`** (DML INSERT — `Columns`/`Values` multi-row +
   `OnDuplicateKeyUpdate`).
@@ -282,7 +282,7 @@ not supported — drop down to `WhereRaw(...)` for those.
 - **Visitor**: `DateTime` properties → `time::*` functions, more string
   methods supported.
 
-### New in 0.5.0
+### New in 0.6.0
 
 - **Generic typed builders** `Create<T>`, `Update<T>`, `Upsert<T>` with
   lambda-based `Set(Expression<Func<T,K>>, value)` selectors.
@@ -293,7 +293,7 @@ not supported — drop down to `WhereRaw(...)` for those.
   `ExecuteListStrictAsync<T>`, `ExecutePagedAsync<T>` (with `HasNext` flag),
   `ExecuteTransactionAsync(builder, retryOnConflict, maxRetries)`.
 
-### New in 0.4.0
+### New in 0.5.0
 
 - **`ExecuteScalarStrictAsync<T>` / `ExecuteCountStrictAsync`** — variants
   that propagate errors instead of swallowing them. Legacy versions kept
