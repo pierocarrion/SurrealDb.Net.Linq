@@ -249,13 +249,62 @@ MIT — see [LICENSE](LICENSE).
 
 ## Status
 
-`0.3.x` — early release. The builder surface is the EF-Core-shaped subset
-that's been battle-tested in production (multi-tenant SaaS on SurrealDB v3).
-`Expression<Func<T, bool>>` translation is supported for the MVP scope listed
-in [SELECT with typed Where lambdas](#select-with-typed-where-lambdas); this
-is **not** a full LINQ-to-SurrealQL provider (no `IQueryable`, no projection /
-`OrderBy` / `Select` lambdas, no graph traversal). If you want full LINQ
-expression trees with composition, this is not that library.
+`0.7.x` — early release. The builder surface is the EF-Core-shaped subset
+that's been battle-tested in production (multi-tenant SaaS on SurrealDB v3),
+plus a growing set of SurrealQL clauses (INSERT, RELATE, set operations,
+CONTENT/MERGE/PATCH, SPLIT, EXPLAIN, PARALLEL, TIMEOUT, VERSION).
+
+`Expression<Func<T, bool>>` translation covers comparisons, logical ops,
+null checks, member chains, `string.Contains/StartsWith/EndsWith/ToLower/
+ToUpper/Trim/Replace/IsNullOrEmpty/IsNullOrWhiteSpace`, collection
+`Contains` (IN/CONTAINS), `DateTime` properties (`time::*` functions), and
+`Nullable<T>` null checks. Arithmetic, subqueries and graph traversal are
+not supported — drop down to `WhereRaw(...)` for those.
+
+### New in 0.7.x
+
+- **Granular CBOR opt-ins**: `UseSnakeCaseNaming`, `UseDateTimeOffsetConverter`,
+  `UseMapToDictionaryConverter` — pick only what you need.
+- **CodeQL + Dependabot** enabled.
+
+### New in 0.6.0
+
+- **`SurrealQuery.Insert`** (DML INSERT — `Columns`/`Values` multi-row +
+  `OnDuplicateKeyUpdate`).
+- **`SurrealQuery.Relate`** for graph edges (`RELATE source -> edge -> target`,
+  `RELATE UNIQUE` variant).
+- **Set operations** (`UNION` / `UNION ALL` / `INTERSECT` / `DIFFERENCE`).
+- **8 new operators**: `Outside`, `Intersects`, `AllInside`, `AnyInside`,
+  `AllOutside`, `AnyOutside`, `Matches` (regex `~`), `NotMatches` (`!~`).
+- **CONTENT/MERGE/PATCH** body modes on Create/Update.
+- **SELECT clauses**: `SPLIT ON`, `EXPLAIN [FULL]`, `PARALLEL`, `TIMEOUT`,
+  `VERSION` (time-travel).
+- **Visitor**: `DateTime` properties → `time::*` functions, more string
+  methods supported.
+
+### New in 0.5.0
+
+- **Generic typed builders** `Create<T>`, `Update<T>`, `Upsert<T>` with
+  lambda-based `Set(Expression<Func<T,K>>, value)` selectors.
+- **`SurrealReturn` enum** replacing magic string literals.
+- **Delete parity**: `Only()`, `Limit()`, `Start()`, `ReturnAfter`,
+  `ReturnFields`.
+- **Execution helpers**: `ExecuteSingleAsync<T>`,
+  `ExecuteListStrictAsync<T>`, `ExecutePagedAsync<T>` (with `HasNext` flag),
+  `ExecuteTransactionAsync(builder, retryOnConflict, maxRetries)`.
+
+### New in 0.4.0
+
+- **`ExecuteScalarStrictAsync<T>` / `ExecuteCountStrictAsync`** — variants
+  that propagate errors instead of swallowing them. Legacy versions kept
+  unchanged for back-compat.
+- **CI**: matrix builds on ubuntu/windows/macos, mandatory `dotnet test`
+  before every PR merge and before publishing to NuGet.
+- **Bug fixes**: `Transaction conflict` detection (silently broken since
+  0.3.x — the wrong error property was being read); `$word` in string
+  literals no longer corrupted by the transaction builder regex;
+  `ParameterBag.Snapshot()` now returns a defensive copy.
+- **Validation**: all builders reject null/empty/negative arguments.
 
 ### CBOR configuration
 

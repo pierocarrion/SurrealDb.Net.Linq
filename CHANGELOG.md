@@ -6,6 +6,93 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-06-21
+
+### Added
+- `CborOptions.UseSnakeCaseNaming()` / `UseDateTimeOffsetConverter()` /
+  `UseMapToDictionaryConverter()` — opt-ins granulares. Permite setups donde
+  sólo uno de los converters es necesario, sin arrastrar los otros dos.
+- `codeql.yml` workflow: análisis semanal de seguridad C# con queries
+  `security-and-quality`.
+- `dependabot.yml`: PRs automáticos para bumps de NuGet y GitHub Actions.
+- `SurrealCborOptionsExtensionsTests` (6 tests): cubren los 3 opt-ins
+  granulares y el composite.
+
+### Changed
+- `UseSurrealSnakeCase()` ahora es un composite que llama a los 3 opt-ins.
+  El comportamiento para callers existentes es idéntico.
+
+### Notes
+- TODO(0.8.0): detectar tagged values en
+  `CborMapToDictionaryConverter.ReadCborValueIntoObject` para que
+  `DateTimeOffset` / `Guid` dentro de columnas `object FLEXIBLE` se
+  materialicen correctamente (hoy se ven como array suelto o null).
+
+## [0.6.0] - 2026-06-21
+
+### Added
+- `SurrealInsertBuilder` (DML INSERT) — `Columns(params string[])`,
+  `Values(params object?[])` multi-row, `OnDuplicateKeyUpdate`, todos los
+  RETURN modes. Era el único DML que faltaba en la lib.
+- `SurrealRelateBuilder` — `RELATE source -> edge -> target` para crear
+  aristas de grafo. Variante `RelateUnique` para `RELATE UNIQUE`.
+- `SurrealSetOperationBuilder` — `UNION` / `UNION ALL` / `INTERSECT` /
+  `DIFFERENCE` composicional sobre N `ISurrealCommand` con rebase de
+  parámetros prefix-everything (mismo esquema que transaction).
+- Select clauses: `SPLIT ON`, `EXPLAIN [FULL]`, `PARALLEL`, `TIMEOUT`,
+  `VERSION` (time-travel queries con change feed).
+- Create/Update body modes: `CONTENT $expr`, `MERGE $expr`, `PATCH $expr`
+  (RFC 6902 JSON Patch). Mutuamente excluyentes con SET, validado en Build.
+- 8 nuevos operadores: `Outside`, `Intersects`, `AllInside`, `AnyInside`,
+  `AllOutside`, `AnyOutside`, `Matches` (regex `~`), `NotMatches` (`!~`).
+- Visitor: `DateTime`/`DateTimeOffset` properties ahora renderizan como
+  funciones `time::*` (`r.CreatedAt.Year` → `time::year(created_at)`).
+  Antes se emitía como `created_at.year` (campo inexistente → SQL válido
+  pero semánticamente erróneo).
+- Visitor: `string.ToLower` / `ToUpper` / `Trim` / `Replace` /
+  `IsNullOrWhiteSpace` ahora se traducen a `string::*` functions.
+- Visitor: `string.Length` → `string::len(field)`.
+- 14 tests nuevos (NewBuildersTests, VisitorExtensionsTests).
+
+### Changed
+- `SurrealOperator.Like` (que emite `string::contains(...)`) marcado en el
+  XML doc como legacy; los nuevos `Matches`/`NotMatches` son los operadores
+  regex nativos de SurrealDB recomendados.
+
+### Fixed
+- Visitor: side-effect bug en single-arg method dispatch — el placeholder
+  se "quemaba" cuando el método no matcheaba,corrigiendo el numbering en
+  casos como `Email.Replace("@", "_") == "x"`.
+- Visitor: `Nullable<T>.HasValue` / `.Value` ahora rechazados con mensaje
+  accionable antes de que el bool-member shorthand los renderice como
+  campos inexistentes.
+
+## [0.5.0] - 2026-06-21
+
+### Added
+- `SurrealCreateBuilder<T>` con `Set<K>(Expression<Func<T,K>>, object?)`,
+  `SetExpr`, `SetIfPresent` lambdas. Resolución vía
+  `[JsonPropertyName]` o snake_case fallback, soporta cadenas anidadas
+  (`u.Address.City`).
+- `SurrealUpdateBuilder<T>` con Set lambdas + `Where`/`And`/`Or`
+  `Expression<Func<T,bool>>`.
+- `SurrealQuery.Create<T>`, `Update<T>`, `Upsert<T>`, `UpdateRecord<T>`,
+  `UpsertRecord<T>` entrypoints.
+- `SurrealReturn` enum + `SurrealReturnRenderer` (None/Before/After/Diff)
+  reemplazando literals "BEFORE"/"AFTER"/"NONE"/"DIFF" internos.
+- `ReturnFields(params string[])` en Create/Update/Delete para
+  `RETURN field1, field2, …` syntax.
+- Paridad DELETE: `Only()`, `Limit(int)`, `Start(int)`, `ReturnAfter`,
+  `Return(SurrealReturn)`, `ReturnFields`.
+- `ExecuteSingleAsync<T>` — primera fila o default.
+- `ExecuteListStrictAsync<T>` / `ExecuteAnyStrictAsync<T>` — variantes
+  estrictas que propagan errores.
+- `ExecutePagedAsync<T, page, pageSize>` — paginación con detección de
+  HasNext en una sola query (LIMIT pageSize+1).
+- `ExecuteTransactionAsync(builder, retryOnConflict, maxRetries)` con
+  backoff exponencial + jitter para reintentar "Transaction conflict".
+- 14 tests cubriendo generic builders, SurrealReturn enum, delete parity.
+
 ## [0.4.0] - 2026-06-21
 
 ### Added
@@ -99,7 +186,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Icono del paquete NuGet** pospuesto a 0.5.0. Falta el PNG físico en
   `assets/icon.png` y el upload se hace desde fuera del chat.
 
-[Unreleased]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.6.0...v0.7.0
+[0.6.0]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.5.0...v0.6.0
+[0.5.0]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.3.4...v0.4.0
 - `SurrealQuery.BeginTransaction()` and `SurrealTransactionBuilder`: build multi-statement `BEGIN; … COMMIT;` / `BEGIN; … CANCEL;` transactions from existing `ISurrealCommand` instances. Parameter names are automatically rebased per statement (`$s0_p0`, `$s1_p0`, …) to avoid collisions.
 - `ExecuteCountAsync(this ISurrealDbClient, ISurrealCommand)` and `ExecuteAnyAsync<T>(this ISurrealDbClient, ISurrealCommand)` execution helpers.

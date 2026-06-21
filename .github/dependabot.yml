@@ -1,0 +1,38 @@
+version: 2
+
+updates:
+  # NuGet package updates for the main library + tests
+  - package-ecosystem: 'nuget'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'sunday'
+    open-pull-requests-limit: 5
+    labels:
+      - 'dependencies'
+      - 'nuget'
+    commit-message:
+      prefix: 'chore(deps)'
+      include: 'scope'
+    # Group patch-only bumps so we don't get 5 PRs for 5 patch releases.
+    groups:
+      patch:
+        update-types:
+          - 'patch'
+      minor:
+        update-types:
+          - 'minor'
+
+  # GitHub Actions updates — keep workflow versions current
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'sunday'
+    open-pull-requests-limit: 3
+    labels:
+      - 'dependencies'
+      - 'github-actions'
+    commit-message:
+      prefix: 'chore(ci)'
+      include: 'scope'
