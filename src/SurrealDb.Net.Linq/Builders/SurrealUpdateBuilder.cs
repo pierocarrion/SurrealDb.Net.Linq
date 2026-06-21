@@ -16,6 +16,9 @@ public sealed class SurrealUpdateBuilder
     private readonly WhereClauseBuilder _where;
     private string? _returnClause;
 
+    internal ParameterBag Bag => _bag;
+    internal void AddRawWhere(string fragment, string conjunction) => _where.AddRaw(fragment, conjunction);
+
     /// <summary>
     /// Bind a record id (or any object) as the target — CBOR handles the
     /// canonical encoding. Use this for record-id targets so the SDK never
@@ -103,6 +106,23 @@ public sealed class SurrealUpdateBuilder
     {
         Arg.NotNullOrWhiteSpace(expression);
         _returnClause = expression;
+        return this;
+    }
+
+    /// <summary>Set RETURN mode using <see cref="SurrealReturn"/> enum.</summary>
+    public SurrealUpdateBuilder Return(SurrealReturn value)
+    {
+        _returnClause = SurrealReturnRenderer.Render(value);
+        return this;
+    }
+
+    /// <summary><c>RETURN field1, field2, …</c> — pick specific fields by name.</summary>
+    public SurrealUpdateBuilder ReturnFields(params string[] fields)
+    {
+        if (fields is null || fields.Length == 0)
+            throw new ArgumentException("ReturnFields requires at least one field.", nameof(fields));
+        foreach (var f in fields) Arg.NotNullOrWhiteSpace(f);
+        _returnClause = string.Join(", ", fields);
         return this;
     }
 

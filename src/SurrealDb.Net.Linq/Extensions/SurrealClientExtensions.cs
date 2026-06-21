@@ -11,6 +11,9 @@ namespace SurrealDb.Net.Linq;
 /// </summary>
 public static class SurrealClientExtensions
 {
+    // Random.Shared no existe en netstandard2.1; usamos un Random con seed
+    // por invocación. Suficiente para jitter de retry de transacciones.
+    private static readonly Random JitterRng = new();
     /// <summary>Execute a built command and return the raw <see cref="SurrealDbResponse"/>.</summary>
     public static Task<SurrealDbResponse> ExecuteAsync(
         this ISurrealDbClient client,
@@ -230,5 +233,145 @@ public static class SurrealClientExtensions
             throw new InvalidOperationException($"CREATE on {table} failed: {detail}");
         }
         return newId;
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // Execution helpers (Phase 2, v0.5.0)
+    // ────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Execute and project the first statement's result to <see cref="List{T}"/>,
+    /// then return the first row or <c>default</c>. Useful for queries with
+    /// <c>LIMIT 1</c> or primary-key lookups. Propaga errores (variante Strict).
+    /// </summary>
+    public static async Task<T?> ExecuteSingleAsync<T>(
+        this ISurrealDbClient client,
+        ISurrealCommand command,
+        CancellationToken ct = default)
+    {
+        var list = await client.ExecuteListStrictAsync<T>(command, ct).ConfigureAwait(false);
+        return list.Count == 0 ? default : list[0];
+    }
+
+    /// <summary>
+    /// Variante estricta de <see cref="ExecuteListAsync{T}"/>: propaga errores
+    /// de RPC en vez de devolver silenciosamente una lista vacía.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">La respuesta contiene errores SurrealDB.</exception>
+    public static async Task<List<T>> ExecuteListStrictAsync<T>(
+        this ISurrealDbClient client,
+        ISurrealCommand command,
+        CancellationToken ct = default)
+    {
+        var response = await client.RawQuery(command.Sql, command.Parameters, ct).ConfigureAwait(false);
+        if (response.HasErrors)
+        {
+            throw new InvalidOperationException(
+                SurrealDbErrorExtractor.GetFirstErrorDetail(response.Errors));
+        }
+        try
+        {
+            return response.GetValue<List<T>>(0) ?? new List<T>();
+        }
+        catch (IndexOutOfRangeException)
+        {
+            return new List<T>();
+        }
+    }
+
+    /// <summary>
+    /// Variante estricta de <see cref="ExecuteAnyAsync{T}"/>.
+    /// </summary>
+    public static async Task<bool> ExecuteAnyStrictAsync<T>(
+        this ISurrealDbClient client,
+        ISurrealCommand command,
+        CancellationToken ct = default)
+    {
+        var list = await client.ExecuteListStrictAsync<T>(command, ct).ConfigureAwait(false);
+        return list.Count > 0;
+    }
+
+    /// <summary>
+    /// Ejecuta una página: aplica internamente <c>LIMIT pageSize START
+    /// (page * pageSize)</c> al comando (reemplazando cualquier LIMIT/START
+    /// previo en el builder — usar sin LIMIT/START en el comando). Devuelve
+    /// los items y un flag <c>HasNext</c> calculado pidiendo pageSize+1 filas.
+    /// </summary>
+    /// <param name="client">The SurrealDB client.</param>
+    /// <param name="command">Built SELECT command. Must NOT contain LIMIT/START clauses — they are appended here.</param>
+    /// <param name="page">Índice de página base-0.</param>
+    /// <param name="pageSize">Tamaño de página (máximo 1000).</param>
+    /// <param name="ct">Cancellation token.</param>
+    public static async Task<(IReadOnlyList<T> Items, bool HasNext)> ExecutePagedAsync<T>(
+        this ISurrealDbClient client,
+        ISurrealCommand command,
+        int page,
+        int pageSize,
+        CancellationToken ct = default)
+    {
+        if (page < 0) throw new ArgumentOutOfRangeException(nameof(page), page, "Page must be >= 0.");
+        if (pageSize <= 0 || pageSize > 1000)
+            throw new ArgumentOutOfRangeException(nameof(pageSize), pageSize, "PageSize must be in (0, 1000].");
+
+        // Pedimos una fila extra para detectar HasNext sin segunda query.
+        var start = page * pageSize;
+        var sql = command.Sql;
+        var pagedSql = AppendPaging(sql, start, pageSize + 1);
+        var pagedCommand = new SurrealCommand(
+            pagedSql,
+            command.Parameters,
+            command.Placeholders);
+
+        var all = await client.ExecuteListStrictAsync<T>(pagedCommand, ct).ConfigureAwait(false);
+        var hasNext = all.Count > pageSize;
+        var items = hasNext ? all.Take(pageSize).ToList() : all;
+        return (items, hasNext);
+    }
+
+    /// <summary>
+    /// Construye y ejecuta una transacción. Si <paramref name="retryOnConflict"/>
+    /// es <c>true</c>, reintenta hasta <paramref name="maxRetries"/> veces
+    /// cuando SurrealDB reporte "Transaction conflict" (optimistic concurrency).
+    /// </summary>
+    public static async Task ExecuteTransactionAsync(
+        this ISurrealDbClient client,
+        SurrealTransactionBuilder transaction,
+        bool retryOnConflict = false,
+        int maxRetries = 3,
+        CancellationToken ct = default)
+    {
+        if (transaction is null) throw new ArgumentNullException(nameof(transaction));
+        if (maxRetries < 0) throw new ArgumentOutOfRangeException(nameof(maxRetries), maxRetries, "maxRetries must be >= 0.");
+
+        var attempt = 0;
+        while (true)
+        {
+            var cmd = transaction.Build();
+            try
+            {
+                await client.ExecuteNoResultAsync(cmd, ct).ConfigureAwait(false);
+                return;
+            }
+            catch (InvalidOperationException) when (retryOnConflict && attempt < maxRetries)
+            {
+                attempt++;
+                // Pequeño backoff exponencial con jitter para evitar thundering herd.
+                var delayMs = (int)(50 * Math.Pow(2, attempt)) + JitterRng.Next(0, 25);
+                await Task.Delay(delayMs, ct).ConfigureAwait(false);
+            }
+        }
+    }
+
+    private static string AppendPaging(string sql, int start, int limit)
+    {
+        // Append LIMIT and START to the SQL. We don't parse the SQL — we
+        // trust SurrealQL to tolerate `LIMIT n START m` at the end of a
+        // SELECT/DELETE statement. For UPDATE statements this is invalid;
+        // callers using UPDATE should manage their own paging via the builder.
+        var sb = new System.Text.StringBuilder(sql.Length + 32);
+        sb.Append(sql);
+        if (start > 0) sb.Append(" START ").Append(start);
+        sb.Append(" LIMIT ").Append(limit);
+        return sb.ToString();
     }
 }

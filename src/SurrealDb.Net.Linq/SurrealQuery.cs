@@ -33,8 +33,18 @@ public static class SurrealQuery
     /// <summary>Begin a <c>CREATE &lt;target&gt;</c> statement.</summary>
     public static SurrealCreateBuilder Create(string target) => new(target);
 
+    /// <summary>
+    /// Begin a typed <c>CREATE &lt;target&gt;</c> statement with lambda-based
+    /// <see cref="SurrealCreateBuilder{T}.Set{K}"/> selectors. Field names are
+    /// resolved from <c>[JsonPropertyName]</c> or snake_case fallback.
+    /// </summary>
+    public static SurrealCreateBuilder<T> Create<T>(string target) => new(target);
+
     /// <summary>Begin an <c>UPDATE &lt;target&gt;</c> statement against a literal target string.</summary>
     public static SurrealUpdateBuilder Update(string target) => new(target, upsert: false);
+
+    /// <summary>Typed <c>UPDATE</c> with lambda Where/Set selectors.</summary>
+    public static SurrealUpdateBuilder<T> Update<T>(string target) => new(target, upsert: false);
 
     /// <summary>
     /// Begin an <c>UPDATE</c> against a record id passed as a CBOR parameter — the
@@ -48,14 +58,31 @@ public static class SurrealQuery
         return new SurrealUpdateBuilder(recordId, upsert: false);
     }
 
+    /// <summary>Typed <c>UPDATE</c> against a record id with lambda selectors.</summary>
+    public static SurrealUpdateBuilder<T> UpdateRecord<T>(object recordId)
+    {
+        Arg.NotNull(recordId);
+        return new SurrealUpdateBuilder<T>(recordId, upsert: false);
+    }
+
     /// <summary>Begin an <c>UPSERT &lt;target&gt;</c> statement against a literal target string.</summary>
     public static SurrealUpdateBuilder Upsert(string target) => new(target, upsert: true);
+
+    /// <summary>Typed <c>UPSERT</c> with lambda Where/Set selectors.</summary>
+    public static SurrealUpdateBuilder<T> Upsert<T>(string target) => new(target, upsert: true);
 
     /// <summary><c>UPSERT</c> against a record id passed as a CBOR parameter.</summary>
     public static SurrealUpdateBuilder UpsertRecord(object recordId)
     {
         Arg.NotNull(recordId);
         return new SurrealUpdateBuilder(recordId, upsert: true);
+    }
+
+    /// <summary>Typed <c>UPSERT</c> against a record id with lambda selectors.</summary>
+    public static SurrealUpdateBuilder<T> UpsertRecord<T>(object recordId)
+    {
+        Arg.NotNull(recordId);
+        return new SurrealUpdateBuilder<T>(recordId, upsert: true);
     }
 
     /// <summary>Begin a <c>DELETE &lt;target&gt;</c> statement.</summary>

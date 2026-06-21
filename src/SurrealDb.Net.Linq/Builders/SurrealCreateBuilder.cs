@@ -76,6 +76,28 @@ public sealed class SurrealCreateBuilder
         return this;
     }
 
+    /// <summary>
+    /// Set RETURN mode using <see cref="SurrealReturn"/> enum. Replaces the
+    /// literal-string overloads (<c>ReturnBefore</c> / <c>ReturnAfter</c> /
+    /// <c>ReturnNone</c> / <c>ReturnDiff</c>) when the call site already has
+    /// the value as enum.
+    /// </summary>
+    public SurrealCreateBuilder Return(SurrealReturn value)
+    {
+        _returnClause = SurrealReturnRenderer.Render(value);
+        return this;
+    }
+
+    /// <summary><c>RETURN field1, field2, …</c> — pick specific fields by name.</summary>
+    public SurrealCreateBuilder ReturnFields(params string[] fields)
+    {
+        if (fields is null || fields.Length == 0)
+            throw new ArgumentException("ReturnFields requires at least one field.", nameof(fields));
+        foreach (var f in fields) Arg.NotNullOrWhiteSpace(f);
+        _returnClause = string.Join(", ", fields);
+        return this;
+    }
+
     public ISurrealCommand Build()
     {
         if (_setClauses.Count == 0)
