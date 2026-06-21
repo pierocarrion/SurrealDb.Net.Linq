@@ -6,8 +6,101 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-21
+
 ### Added
-- Multi-target `netstandard2.1` in addition to `net8.0`, `net9.0` and `net10.0`. This lets the package run on .NET Core 3.0/3.1, .NET 5, 6 and 7, plus Mono, Xamarin and Unity. `System.Text.Json` is now an explicit package reference for the `netstandard2.1` target so consumers on older runtimes get a compatible assembly.
+- **CI**: build matrix (ubuntu/windows/macos), ejecución de `dotnet test` en
+  cada push/PR, recolección de cobertura Coverlet (Cobertura format) y upload
+  de artefactos. Antes de 0.4.0 el CI sólo hacía `dotnet build` + `dotnet pack`
+  dry-run — un PR que rompía tests podía mergear verde.
+- **CI (publish)**: gate `dotnet test` antes del push a NuGet. Un tag roto
+  ya no llega al feed público.
+- `ExecuteScalarStrictAsync<T>` y `ExecuteCountStrictAsync`: variantes estrictas
+  que propagan errores de RPC/deserialización en lugar de tragarlos. Las
+  versiones legacy `ExecuteScalarAsync`/`ExecuteCountAsync` se quedan sin
+  cambios (no marcadas obsoletas) para no romper builds existentes con
+  `TreatWarningsAsErrors`. Recomendado: migrar a los `*Strict` en nuevos
+  código.
+- `Internal/Arg`: helper de validación con polyfill compile-time de
+  `[CallerArgumentExpression]` para `netstandard2.1`. Reemplaza el uso directo
+  de `ArgumentNullException.ThrowIfNull` (que no existe en netstandard2.1).
+- `Internal/SurrealDbErrorExtractor`: punto único de reflexión sobre errores
+  SurrealDb.Net — antes repartido en 2 callers con reflexión duplicada.
+- `ISurrealCommand.Placeholders` (lista ordenada, sin `$`): permite a la
+  transaction reescribir parámetros sin parsear SQL. Default: vacío
+  (compatibilidad con implementaciones externas).
+- `ParameterBag.GetPlaceholders()`: orden de inserción para alimentar la
+  property nueva.
+- Validación de argumentos en TODOS los métodos públicos de los builders
+  (`Select`, `Create`, `Update`, `Upsert`, `Delete`, `Raw`, `InsertWithIdAsync`):
+  `ArgumentNullException` / `ArgumentException` / `ArgumentOutOfRangeException`
+  para null, vacío, negativo.
+- Backtick-escaping de nombres de campo en `InsertWithIdAsync` (neutraliza la
+  única superficie de inyección SQL de la lib; los valores seguían
+  parametrizados).
+- NSubstitute 5.3.0 + coverlet.collector 6.0.2 en el test project (cobertura
+  y mock framework para los tests nuevos de extensiones).
+- 71 tests nuevos:
+  - `SurrealClientExtensionsTests` (11): validación de `InsertWithIdAsync`,
+    paths de `*Strict`, propagación de cancellation, fixture de error
+    responses vía reflexión.
+  - `SurrealDbErrorExtractorTests` (8): paths Message/Details/ToString/empty.
+  - `BuilderValidationTests` (35): validaciones de todos los builders.
+  - `ParameterBagTests` (4 nuevos): snapshot defensivo, GetPlaceholders.
+  - `SurrealTransactionBuilderTests` (5 nuevos): regresión T7, Placeholders.
+- Multi-target `netstandard2.1` además de `net8.0`, `net9.0` y `net10.0`. El
+  paquete ahora corre en .NET Core 3.0/3.1, .NET 5, 6 y 7, Mono, Xamarin y
+  Unity. `System.Text.Json` es ahora PackageReference explícito para el
+  target `netstandard2.1` (relanzado desde la sección Unreleased previa).
+- `SurrealQuery.BeginTransaction()` y `SurrealTransactionBuilder`: construyen
+  transacciones multi-statement `BEGIN; … COMMIT;` / `BEGIN; … CANCEL;`
+  desde `ISurrealCommand` existentes (relanzado desde Unreleased previa).
+- `ExecuteCountAsync(this ISurrealDbClient, ISurrealCommand)` y
+  `ExecuteAnyAsync<T>(this ISurrealDbClient, ISurrealCommand)` helpers de
+  ejecución (relanzado desde Unreleased previa).
+
+### Changed
+- `SurrealTransactionBuilder.RebaseSql` ya no usa regex: ahora hace
+  `string.Replace` sobre placeholders conocidos (vía la nueva
+  `ISurrealCommand.Placeholders`). Elimina el bug de literales con `$`.
+- `ParameterBag.Snapshot()` devuelve copia defensiva (`new Dictionary<>(...)`)
+  en lugar de la referencia viva. `Build()` ahora es verdaderamente
+  inmutable: añadir más parámetros al bag después de `Build()` no muta el
+  comando ya construido.
+- `SurrealCommand` ahora acepta un tercer parámetro `IReadOnlyList<string>
+  Placeholders`. El ctor binario legacy se mantiene para `SurrealQuery.Raw`
+  y `SurrealQuery.Kill` (no rompe implementaciones externas de
+  `ISurrealCommand` gracias al default `Array.Empty<string>`).
+
+### Fixed
+- **Bug silencioso en `ExecuteNoResultAsync` y `InsertWithIdAsync`**: la
+  reflexión agarraba la propiedad equivocada del error SurrealDb.Net.
+  `RpcErrorResponseContent.Details` es un objeto complejo
+  (`RpcErrorDetails`), no el mensaje — el texto vive en
+  `RpcErrorResponseContent.Message`. Como consecuencia, el check de
+  "Transaction conflict" **nunca matcheaba**: una respuesta con
+  Transaction conflict se reportaba como `InvalidOperationException("")`
+  en vez de no-op. El nuevo `SurrealDbErrorExtractor` prueba `Message`
+  primero, `Details` después (en caso de que `Details` sea string en
+  otras shapes del SDK), y `ToString` al final.
+- **Bug de corrupción de SQL en transactions**: `$word` dentro de literales
+  string (p.e. `'price: $5.00'`) o comentarios se reescribía como
+  `$s0_5.00`, produciendo SQL inválido. Ahora el rebase sólo opera sobre
+  placeholders conocidos, no sobre cualquier `$word`.
+- `ParameterBag.Snapshot()` ya no muta snapshots ya entregados a un
+  `ISurrealCommand` cuando se siguen añadiendo parámetros al bag.
+- `InsertWithIdAsync` valida ahora `null`/empty en `table`, `fields` e
+  `idGenerator`. Antes, una llamada con `table=null` reventaba con
+  `NullReferenceException` en `RecordId.From(null, ...)` sin contexto.
+- `InsertWithIdAsync` valida que `idGenerator()` no devuelva string vacío.
+  Antes producía `table:` que SurrealDB rechazaba con un error de parse.
+
+### Notes
+- **Icono del paquete NuGet** pospuesto a 0.5.0. Falta el PNG físico en
+  `assets/icon.png` y el upload se hace desde fuera del chat.
+
+[Unreleased]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.3.4...v0.4.0
 - `SurrealQuery.BeginTransaction()` and `SurrealTransactionBuilder`: build multi-statement `BEGIN; … COMMIT;` / `BEGIN; … CANCEL;` transactions from existing `ISurrealCommand` instances. Parameter names are automatically rebased per statement (`$s0_p0`, `$s1_p0`, …) to avoid collisions.
 - `ExecuteCountAsync(this ISurrealDbClient, ISurrealCommand)` and `ExecuteAnyAsync<T>(this ISurrealDbClient, ISurrealCommand)` execution helpers.
 

@@ -19,6 +19,11 @@ public static class SurrealClientExtensions
         client.RawQuery(command.Sql, command.Parameters, ct);
 
     /// <summary>Execute and project the first statement's result to <typeparamref name="T"/>; default when missing.</summary>
+    /// <remarks>
+    /// <b>Legacy behaviour</b>: este método traga cualquier excepción de
+    /// deserialización o RPC y devuelve <c>default</c>. Para propagar errores
+    /// (recomendado), usa <see cref="ExecuteScalarStrictAsync{T}"/>.
+    /// </remarks>
     public static async Task<T?> ExecuteScalarAsync<T>(
         this ISurrealDbClient client,
         ISurrealCommand command,
@@ -27,6 +32,37 @@ public static class SurrealClientExtensions
         var response = await client.RawQuery(command.Sql, command.Parameters, ct).ConfigureAwait(false);
         try { return response.GetValue<T>(0); }
         catch { return default; }
+    }
+
+    /// <summary>
+    /// Execute and project the first statement's result to <typeparamref name="T"/>.
+    /// Variante estricta que propaga errores de RPC (lanza
+    /// <see cref="InvalidOperationException"/> si <c>response.HasErrors</c>) y
+    /// de deserialización (no traga excepciones). Devuelve <c>default</c>
+    /// cuando la respuesta no contiene filas.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">La respuesta SurrealDB contiene errores.</exception>
+    public static async Task<T?> ExecuteScalarStrictAsync<T>(
+        this ISurrealDbClient client,
+        ISurrealCommand command,
+        CancellationToken ct = default)
+    {
+        var response = await client.RawQuery(command.Sql, command.Parameters, ct).ConfigureAwait(false);
+        if (response.HasErrors)
+        {
+            throw new InvalidOperationException(
+                SurrealDbErrorExtractor.GetFirstErrorDetail(response.Errors));
+        }
+        try
+        {
+            return response.GetValue<T>(0);
+        }
+        catch (IndexOutOfRangeException)
+        {
+            // Respuesta sin resultados (ningún statement devolvió filas) —
+            // caso legítimo de "no rows", lo tratamos como default.
+            return default;
+        }
     }
 
     /// <summary>Execute and read the first statement's result as <c>List&lt;T&gt;</c>; empty when nothing.</summary>
@@ -56,6 +92,34 @@ public static class SurrealClientExtensions
             return value is null ? 0 : Convert.ToInt64(value);
         }
         catch
+        {
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// Execute and read the first statement's first value as <see cref="long"/>.
+    /// Variante estricta: propaga errores de RPC y deserialización. Devuelve
+    /// <c>0</c> cuando el valor es null o la respuesta no tiene filas.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">La respuesta SurrealDB contiene errores.</exception>
+    public static async Task<long> ExecuteCountStrictAsync(
+        this ISurrealDbClient client,
+        ISurrealCommand command,
+        CancellationToken ct = default)
+    {
+        var response = await client.RawQuery(command.Sql, command.Parameters, ct).ConfigureAwait(false);
+        if (response.HasErrors)
+        {
+            throw new InvalidOperationException(
+                SurrealDbErrorExtractor.GetFirstErrorDetail(response.Errors));
+        }
+        try
+        {
+            var value = response.GetValue<object>(0);
+            return value is null ? 0 : Convert.ToInt64(value);
+        }
+        catch (IndexOutOfRangeException)
         {
             return 0;
         }
@@ -92,10 +156,8 @@ public static class SurrealClientExtensions
     {
         var resp = await client.RawQuery(command.Sql, command.Parameters, ct).ConfigureAwait(false);
         if (!resp.HasErrors) return;
-        var detail = resp.Errors
-            .Select(e => e.GetType().GetProperty("Details")?.GetValue(e)?.ToString() ?? e.ToString())
-            .FirstOrDefault() ?? "Unknown error";
-        if (detail.Contains("Transaction conflict", StringComparison.OrdinalIgnoreCase))
+        var detail = SurrealDbErrorExtractor.GetFirstErrorDetail(resp.Errors);
+        if (SurrealDbErrorExtractor.IsTransactionConflict(detail))
         {
             return;
         }
@@ -127,7 +189,10 @@ public static class SurrealClientExtensions
         Func<string> idGenerator,
         CancellationToken ct = default)
     {
-        if (idGenerator is null) throw new ArgumentNullException(nameof(idGenerator));
+        Arg.NotNull(idGenerator);
+        Arg.NotNull(table);
+        Arg.NotNull(fields);
+        Arg.NotNullOrWhiteSpace(table);
 
         // SurrealDB v3 distinguishes between NONE (field absent) and NULL
         // (field present with null value). For `option<…>` columns, sending
@@ -136,8 +201,13 @@ public static class SurrealClientExtensions
         // NONE — callers don't need to pre-filter their dictionaries.
         var nonNullFields = fields.Where(kv => kv.Value is not null).ToList();
         var newId = idGenerator();
+        if (string.IsNullOrEmpty(newId))
+            throw new InvalidOperationException("idGenerator returned an empty id.");
         var record = RecordId.From(table, newId);
-        var setClauses = string.Join(", ", nonNullFields.Select(kv => $"{kv.Key} = ${kv.Key}"));
+        // Backtick-escape field names — SurrealDB v3 soporta `field` syntax,
+        // y esto neutraliza la única superficie de inyección SQL de la lib.
+        // Los valores siguen parametrizados.
+        var setClauses = string.Join(", ", nonNullFields.Select(kv => $"`{kv.Key}` = ${kv.Key}"));
         var sql = $"CREATE $__rid SET {setClauses} RETURN NONE";
         var parameters = new Dictionary<string, object?>(nonNullFields.Count + 1)
         {
@@ -156,9 +226,7 @@ public static class SurrealClientExtensions
             // Preserve the original SurrealDB error text so callers can still
             // pattern-match on substrings like "Database index" / "already
             // contains" / "UNIQUE" to map index violations to a domain 409.
-            var detail = resp.Errors
-                .Select(e => e.GetType().GetProperty("Details")?.GetValue(e)?.ToString() ?? e.ToString())
-                .FirstOrDefault() ?? "Unknown error";
+            var detail = SurrealDbErrorExtractor.GetFirstErrorDetail(resp.Errors);
             throw new InvalidOperationException($"CREATE on {table} failed: {detail}");
         }
         return newId;

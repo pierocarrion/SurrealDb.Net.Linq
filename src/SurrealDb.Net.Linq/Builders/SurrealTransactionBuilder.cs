@@ -1,5 +1,4 @@
 using System.Text;
-using System.Text.RegularExpressions;
 
 namespace SurrealDb.Net.Linq;
 
@@ -11,10 +10,6 @@ namespace SurrealDb.Net.Linq;
 /// </summary>
 public sealed class SurrealTransactionBuilder
 {
-    private static readonly Regex ParameterRegex = new(
-        @"\$(?<name>\w+)",
-        RegexOptions.Compiled | RegexOptions.CultureInvariant);
-
     private readonly List<ISurrealCommand> _commands = new();
     private bool? _commit;
 
@@ -62,6 +57,7 @@ public sealed class SurrealTransactionBuilder
 
         var sb = new StringBuilder();
         var combinedParams = new Dictionary<string, object?>();
+        var combinedPlaceholders = new List<string>();
 
         sb.AppendLine("BEGIN;");
 
@@ -70,7 +66,14 @@ public sealed class SurrealTransactionBuilder
             var command = _commands[i];
             var prefix = $"s{i}_";
 
-            var nameMap = command.Parameters.Keys.ToDictionary(
+            // Usar Placeholders conocidos si el comando los expone; si no,
+            // caer a las keys de Parameters (comportamiento legacy para
+            // comandos construidos fuera de los builders, p.e. Raw/Kill).
+            var sourcePlaceholders = command.Placeholders.Count > 0
+                ? command.Placeholders
+                : command.Parameters.Keys.ToList();
+
+            var nameMap = sourcePlaceholders.ToDictionary(
                 name => name,
                 name => $"{prefix}{name}");
 
@@ -86,23 +89,35 @@ public sealed class SurrealTransactionBuilder
             {
                 combinedParams[nameMap[kv.Key]] = kv.Value;
             }
+            foreach (var name in sourcePlaceholders)
+            {
+                combinedPlaceholders.Add(nameMap[name]);
+            }
         }
 
         sb.Append(_commit.Value ? "COMMIT;" : "CANCEL;");
 
-        return new SurrealCommand(sb.ToString(), combinedParams);
+        return new SurrealCommand(sb.ToString(), combinedParams, combinedPlaceholders);
     }
 
+    /// <summary>
+    /// Reemplazo textual y seguro: sólo operamos sobre placeholders conocidos
+    /// (con prefijo <c>$</c>), no sobre cualquier <c>$word</c> en el SQL.
+    /// Esto arregla el bug donde literales como <c>'price: $5.00'</c> dentro
+    /// de un <see cref="SurrealQuery.Raw(string, IDictionary{string, object?}?)"/>
+    /// resultaban corruptos al reescribirse como <c>$s0_5.00</c>.
+    /// </summary>
     private static string RebaseSql(string sql, IReadOnlyDictionary<string, string> nameMap)
     {
-        return ParameterRegex.Replace(sql, m =>
+        if (nameMap.Count == 0) return sql;
+        var result = sql;
+        foreach (var kv in nameMap)
         {
-            var name = m.Groups["name"].Value;
-            if (nameMap.TryGetValue(name, out var newName))
-            {
-                return $"${newName}";
-            }
-            return m.Value;
-        });
+            var oldToken = "$" + kv.Key;
+            var newToken = "$" + kv.Value;
+            result = result.Replace(oldToken, newToken, StringComparison.Ordinal);
+        }
+        return result;
     }
 }
+

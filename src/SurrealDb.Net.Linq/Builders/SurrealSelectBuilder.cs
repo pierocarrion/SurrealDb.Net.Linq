@@ -26,6 +26,7 @@ public sealed class SurrealSelectBuilder
 
     internal SurrealSelectBuilder(string target, bool isLive)
     {
+        Arg.NotNullOrWhiteSpace(target);
         _target = target;
         _isLive = isLive;
         _where = new WhereClauseBuilder(_bag);
@@ -46,6 +47,7 @@ public sealed class SurrealSelectBuilder
     /// <summary>Append one column to the projection.</summary>
     public SurrealSelectBuilder Field(string name)
     {
+        Arg.NotNullOrWhiteSpace(name);
         _projection.Add(name);
         _selectValueExpr = null;
         return this;
@@ -54,6 +56,7 @@ public sealed class SurrealSelectBuilder
     /// <summary>Replace projection with <c>SELECT VALUE &lt;expr&gt;</c> (returns a flat value, not a row).</summary>
     public SurrealSelectBuilder SelectValue(string expression)
     {
+        Arg.NotNullOrWhiteSpace(expression);
         _projection.Clear();
         _selectValueExpr = expression;
         return this;
@@ -68,6 +71,7 @@ public sealed class SurrealSelectBuilder
 
     public SurrealSelectBuilder Where(string field, SurrealOperator op, object? value = null)
     {
+        Arg.NotNullOrWhiteSpace(field);
         _where.Add(field, op, value, conjunction: "AND");
         return this;
     }
@@ -88,6 +92,7 @@ public sealed class SurrealSelectBuilder
     /// </summary>
     public SurrealSelectBuilder WhereRaw(string expression, IDictionary<string, object?>? parameters = null)
     {
+        Arg.NotNullOrWhiteSpace(expression);
         if (parameters is not null)
         {
             foreach (var kv in parameters)
@@ -101,24 +106,28 @@ public sealed class SurrealSelectBuilder
 
     public SurrealSelectBuilder OrderBy(string field, SortDirection dir = SortDirection.Asc)
     {
+        Arg.NotNullOrWhiteSpace(field);
         _orderBy.Add((field, dir));
         return this;
     }
 
     public SurrealSelectBuilder GroupBy(params string[] fields)
     {
+        if (fields is null) throw new ArgumentNullException(nameof(fields));
         _groupBy.AddRange(fields);
         return this;
     }
 
     public SurrealSelectBuilder Limit(int n)
     {
+        Arg.NonNegative(n);
         _limit = n;
         return this;
     }
 
     public SurrealSelectBuilder Start(int n)
     {
+        Arg.NonNegative(n);
         _start = n;
         return this;
     }
@@ -126,6 +135,7 @@ public sealed class SurrealSelectBuilder
     /// <summary>Add a <c>FETCH &lt;field&gt;[, …]</c> clause to dereference record links inline.</summary>
     public SurrealSelectBuilder Fetch(params string[] fields)
     {
+        if (fields is null) throw new ArgumentNullException(nameof(fields));
         _fetch.AddRange(fields);
         return this;
     }
@@ -185,6 +195,6 @@ public sealed class SurrealSelectBuilder
             sb.Append(" FETCH ").Append(string.Join(", ", _fetch));
         }
 
-        return new SurrealCommand(sb.ToString(), _bag.Snapshot());
+        return new SurrealCommand(sb.ToString(), _bag.Snapshot(), _bag.GetPlaceholders());
     }
 }

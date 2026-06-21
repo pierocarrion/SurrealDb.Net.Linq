@@ -12,6 +12,7 @@ public sealed class SurrealDeleteBuilder
 
     internal SurrealDeleteBuilder(string target)
     {
+        Arg.NotNullOrWhiteSpace(target);
         _target = target;
         _where = new WhereClauseBuilder(_bag);
     }
@@ -21,6 +22,7 @@ public sealed class SurrealDeleteBuilder
 
     public SurrealDeleteBuilder Where(string field, SurrealOperator op, object? value = null)
     {
+        Arg.NotNullOrWhiteSpace(field);
         _where.Add(field, op, value, conjunction: "AND");
         return this;
     }
@@ -28,12 +30,14 @@ public sealed class SurrealDeleteBuilder
     public SurrealDeleteBuilder And(string field, SurrealOperator op, object? value = null) => Where(field, op, value);
     public SurrealDeleteBuilder Or(string field, SurrealOperator op, object? value = null)
     {
+        Arg.NotNullOrWhiteSpace(field);
         _where.Add(field, op, value, conjunction: "OR");
         return this;
     }
 
     public SurrealDeleteBuilder WhereRaw(string expression, IDictionary<string, object?>? parameters = null)
     {
+        Arg.NotNullOrWhiteSpace(expression);
         if (parameters is not null)
         {
             foreach (var kv in parameters) _bag.AddNamed(kv.Key, kv.Value);
@@ -52,6 +56,6 @@ public sealed class SurrealDeleteBuilder
         sb.Append("DELETE ").Append(_target);
         if (_where.HasClause) sb.Append(" WHERE ").Append(_where.Render());
         if (_returnClause is not null) sb.Append(" RETURN ").Append(_returnClause);
-        return new SurrealCommand(sb.ToString(), _bag.Snapshot());
+        return new SurrealCommand(sb.ToString(), _bag.Snapshot(), _bag.GetPlaceholders());
     }
 }

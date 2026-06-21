@@ -42,13 +42,21 @@ public static class SurrealQuery
     /// round-trip mismatch where a record id like <c>user:01HZ…</c> can be
     /// rendered with or without angle brackets and silently match no rows.
     /// </summary>
-    public static SurrealUpdateBuilder UpdateRecord(object recordId) => new(recordId, upsert: false);
+    public static SurrealUpdateBuilder UpdateRecord(object recordId)
+    {
+        Arg.NotNull(recordId);
+        return new SurrealUpdateBuilder(recordId, upsert: false);
+    }
 
     /// <summary>Begin an <c>UPSERT &lt;target&gt;</c> statement against a literal target string.</summary>
     public static SurrealUpdateBuilder Upsert(string target) => new(target, upsert: true);
 
     /// <summary><c>UPSERT</c> against a record id passed as a CBOR parameter.</summary>
-    public static SurrealUpdateBuilder UpsertRecord(object recordId) => new(recordId, upsert: true);
+    public static SurrealUpdateBuilder UpsertRecord(object recordId)
+    {
+        Arg.NotNull(recordId);
+        return new SurrealUpdateBuilder(recordId, upsert: true);
+    }
 
     /// <summary>Begin a <c>DELETE &lt;target&gt;</c> statement.</summary>
     public static SurrealDeleteBuilder Delete(string target) => new(target);
@@ -61,10 +69,13 @@ public static class SurrealQuery
         new SurrealCommand("KILL $live", new Dictionary<string, object?> { ["live"] = liveId });
 
     /// <summary>Wrap a hand-written SurrealQL string. Use sparingly — prefer the typed builders.</summary>
-    public static ISurrealCommand Raw(string sql, IDictionary<string, object?>? parameters = null) =>
-        new SurrealCommand(sql, parameters is null
+    public static ISurrealCommand Raw(string sql, IDictionary<string, object?>? parameters = null)
+    {
+        Arg.NotNullOrWhiteSpace(sql);
+        return new SurrealCommand(sql, parameters is null
             ? new Dictionary<string, object?>()
             : new Dictionary<string, object?>(parameters));
+    }
 
     /// <summary>Begin a multi-statement transaction builder.</summary>
     public static SurrealTransactionBuilder BeginTransaction() => new();

@@ -32,6 +32,7 @@ public sealed class SurrealUpdateBuilder
 
     internal SurrealUpdateBuilder(string target, bool upsert)
     {
+        Arg.NotNullOrWhiteSpace(target);
         _target = target;
         _upsert = upsert;
         _where = new WhereClauseBuilder(_bag);
@@ -39,6 +40,7 @@ public sealed class SurrealUpdateBuilder
 
     public SurrealUpdateBuilder Set(string field, object? value)
     {
+        Arg.NotNullOrWhiteSpace(field);
         var placeholder = _bag.Add(value);
         _setClauses.Add($"{field} = {placeholder}");
         return this;
@@ -46,6 +48,8 @@ public sealed class SurrealUpdateBuilder
 
     public SurrealUpdateBuilder SetExpr(string field, string expression)
     {
+        Arg.NotNullOrWhiteSpace(field);
+        Arg.NotNullOrWhiteSpace(expression);
         _setClauses.Add($"{field} = {expression}");
         return this;
     }
@@ -59,6 +63,7 @@ public sealed class SurrealUpdateBuilder
 
     public SurrealUpdateBuilder Where(string field, SurrealOperator op, object? value = null)
     {
+        Arg.NotNullOrWhiteSpace(field);
         _where.Add(field, op, value, conjunction: "AND");
         return this;
     }
@@ -67,12 +72,14 @@ public sealed class SurrealUpdateBuilder
 
     public SurrealUpdateBuilder Or(string field, SurrealOperator op, object? value = null)
     {
+        Arg.NotNullOrWhiteSpace(field);
         _where.Add(field, op, value, conjunction: "OR");
         return this;
     }
 
     public SurrealUpdateBuilder WhereRaw(string expression, IDictionary<string, object?>? parameters = null)
     {
+        Arg.NotNullOrWhiteSpace(expression);
         if (parameters is not null)
         {
             foreach (var kv in parameters) _bag.AddNamed(kv.Key, kv.Value);
@@ -83,6 +90,7 @@ public sealed class SurrealUpdateBuilder
 
     public SurrealUpdateBuilder Bind(string name, object? value)
     {
+        Arg.NotNullOrWhiteSpace(name);
         _bag.AddNamed(name, value);
         return this;
     }
@@ -91,7 +99,12 @@ public sealed class SurrealUpdateBuilder
     public SurrealUpdateBuilder ReturnBefore() { _returnClause = "BEFORE"; return this; }
     public SurrealUpdateBuilder ReturnNone() { _returnClause = "NONE"; return this; }
     public SurrealUpdateBuilder ReturnDiff() { _returnClause = "DIFF"; return this; }
-    public SurrealUpdateBuilder Return(string expression) { _returnClause = expression; return this; }
+    public SurrealUpdateBuilder Return(string expression)
+    {
+        Arg.NotNullOrWhiteSpace(expression);
+        _returnClause = expression;
+        return this;
+    }
 
     public ISurrealCommand Build()
     {
@@ -104,6 +117,6 @@ public sealed class SurrealUpdateBuilder
         sb.Append(" SET ").Append(string.Join(", ", _setClauses));
         if (_where.HasClause) sb.Append(" WHERE ").Append(_where.Render());
         if (_returnClause is not null) sb.Append(" RETURN ").Append(_returnClause);
-        return new SurrealCommand(sb.ToString(), _bag.Snapshot());
+        return new SurrealCommand(sb.ToString(), _bag.Snapshot(), _bag.GetPlaceholders());
     }
 }

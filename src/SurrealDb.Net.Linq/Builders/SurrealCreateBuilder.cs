@@ -16,11 +16,16 @@ public sealed class SurrealCreateBuilder
 
     private string? _returnClause;
 
-    internal SurrealCreateBuilder(string target) => _target = target;
+    internal SurrealCreateBuilder(string target)
+    {
+        Arg.NotNullOrWhiteSpace(target);
+        _target = target;
+    }
 
     /// <summary>Set a field to a parameterized value.</summary>
     public SurrealCreateBuilder Set(string field, object? value)
     {
+        Arg.NotNullOrWhiteSpace(field);
         var placeholder = _bag.Add(value);
         _setClauses.Add($"{field} = {placeholder}");
         return this;
@@ -29,6 +34,8 @@ public sealed class SurrealCreateBuilder
     /// <summary>Set a field to a raw SurrealQL expression (e.g. <c>time::now()</c>, <c>type::record($id)</c>).</summary>
     public SurrealCreateBuilder SetExpr(string field, string expression)
     {
+        Arg.NotNullOrWhiteSpace(field);
+        Arg.NotNullOrWhiteSpace(expression);
         _setClauses.Add($"{field} = {expression}");
         return this;
     }
@@ -44,6 +51,7 @@ public sealed class SurrealCreateBuilder
     /// <summary>Bulk parameter binding (without emitting a SET clause). Useful when <see cref="SetExpr"/> embeds custom placeholders.</summary>
     public SurrealCreateBuilder Bind(string name, object? value)
     {
+        Arg.NotNullOrWhiteSpace(name);
         _bag.AddNamed(name, value);
         return this;
     }
@@ -61,7 +69,12 @@ public sealed class SurrealCreateBuilder
     public SurrealCreateBuilder ReturnDiff() { _returnClause = "DIFF"; return this; }
 
     /// <summary><c>RETURN &lt;expr&gt;</c> — pick specific fields.</summary>
-    public SurrealCreateBuilder Return(string expression) { _returnClause = expression; return this; }
+    public SurrealCreateBuilder Return(string expression)
+    {
+        Arg.NotNullOrWhiteSpace(expression);
+        _returnClause = expression;
+        return this;
+    }
 
     public ISurrealCommand Build()
     {
@@ -72,6 +85,6 @@ public sealed class SurrealCreateBuilder
         var sb = new StringBuilder();
         sb.Append("CREATE ").Append(_target).Append(" SET ").Append(string.Join(", ", _setClauses));
         if (_returnClause is not null) sb.Append(" RETURN ").Append(_returnClause);
-        return new SurrealCommand(sb.ToString(), _bag.Snapshot());
+        return new SurrealCommand(sb.ToString(), _bag.Snapshot(), _bag.GetPlaceholders());
     }
 }

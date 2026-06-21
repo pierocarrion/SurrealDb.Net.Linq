@@ -6,8 +6,12 @@ on:
   pull_request:
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  build-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
@@ -24,6 +28,32 @@ jobs:
 
       - name: Build
         run: dotnet build SurrealDb.Net.Linq.sln -c Release --no-restore
+
+      - name: Test
+        run: >-
+          dotnet test SurrealDb.Net.Linq.sln
+          -c Release --no-build
+          --logger "trx;LogFileName=tests.trx"
+          --logger "console;verbosity=normal"
+          --collect:"XPlat Code Coverage"
+          --results-directory ./TestResults
+        shell: bash
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}
+          path: ./TestResults/**/*
+          if-no-files-found: ignore
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.os }}
+          path: ./TestResults/**/coverage.cobertura.xml
+          if-no-files-found: ignore
 
       - name: Pack (dry)
         run: dotnet pack src/SurrealDb.Net.Linq/SurrealDb.Net.Linq.csproj -c Release --no-build -o ./artifacts

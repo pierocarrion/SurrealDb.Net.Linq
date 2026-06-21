@@ -47,4 +47,54 @@ public class ParameterBagTests
 
         Assert.Equal("second", bag.Snapshot()["k"]);
     }
+
+    // ────────────────────────────────────────────────────────────────────
+    // Regresión A7 (0.4.0): Snapshot() ahora devuelve una copia defensiva.
+    // Antes de 0.4.0 era una referencia viva al diccionario interno.
+    // ────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Snapshot_does_not_mutate_after_subsequent_Add()
+    {
+        var bag = new ParameterBag();
+        bag.Add("a");
+        var snapshot = bag.Snapshot();
+        bag.Add("b");
+
+        Assert.Single(snapshot);
+        Assert.Equal(2, bag.Snapshot().Count);
+    }
+
+    [Fact]
+    public void Snapshot_does_not_mutate_after_subsequent_AddNamed()
+    {
+        var bag = new ParameterBag();
+        bag.AddNamed("x", 1);
+        var snapshot = bag.Snapshot();
+        bag.AddNamed("y", 2);
+
+        Assert.Single(snapshot);
+        Assert.Equal(2, bag.Snapshot().Count);
+    }
+
+    [Fact]
+    public void GetPlaceholders_returns_insertion_order_for_Add()
+    {
+        var bag = new ParameterBag();
+        bag.Add("a");
+        bag.Add("b");
+        bag.Add("c");
+
+        Assert.Equal(new[] { "p0", "p1", "p2" }, bag.GetPlaceholders());
+    }
+
+    [Fact]
+    public void GetPlaceholders_does_not_duplicate_on_AddNamed_overwrite()
+    {
+        var bag = new ParameterBag();
+        bag.AddNamed("k", 1);
+        bag.AddNamed("k", 2);
+
+        Assert.Equal(new[] { "k" }, bag.GetPlaceholders());
+    }
 }
