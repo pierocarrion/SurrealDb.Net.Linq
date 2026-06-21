@@ -107,6 +107,13 @@ public sealed class CborMapToDictionaryConverter : CborConverterBase<Dictionary<
     {
         var itemType = reader.GetCurrentDataItemType();
 
+        // TODO(0.8.0): detect tagged values (DateTimeOffset tag 12, UUID tag)
+        // y delegar al converter registrado en el host CborOptions. Hoy estos
+        // valores dentro de `object FLEXIBLE` columns se materializan como
+        // primitivas sueltas (array [int64, int32] para datetime) o null,
+        // dependiendo del itemType reportado por Dahomey. La mejora requiere
+        // acceso al SemanticTag del reader, que Dahomey no expone de forma
+        // pública estable.
         return itemType switch
         {
             CborDataItemType.Null => reader.ReadNull(),
