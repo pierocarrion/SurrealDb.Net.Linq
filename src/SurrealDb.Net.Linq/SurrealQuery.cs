@@ -91,6 +91,24 @@ public static class SurrealQuery
     /// <summary>Begin a typed <c>DELETE &lt;target&gt;</c> statement with Expression-based predicates.</summary>
     public static SurrealDeleteBuilder<T> Delete<T>(string target) => new(target);
 
+    /// <summary>Begin an <c>INSERT INTO</c> statement (DML INSERT — the missing piece).</summary>
+    public static SurrealInsertBuilder Insert(string target) => new(target);
+
+    /// <summary>
+    /// Begin a <c>RELATE source -&gt; edge -&gt; target</c> statement. Creates
+    /// a graph edge between two records. Source and target are parameterized
+    /// (record ids serializados via CBOR).
+    /// </summary>
+    public static SurrealRelateBuilder Relate(string source, string edge, string target) =>
+        new(source, edge, target);
+
+    /// <summary>Begin a <c>RELATE UNIQUE …</c> — only creates the edge if it doesn't already exist.</summary>
+    public static SurrealRelateBuilder RelateUnique(string source, string edge, string target) =>
+        new(source, edge, target, unique: true);
+
+    /// <summary>Begin a set operation (UNION/UNION ALL/INTERSECT/DIFFERENCE) over N SELECT commands.</summary>
+    public static SurrealSetOperationBuilder SetOperation() => new();
+
     /// <summary>Build a <c>KILL $live</c> statement.</summary>
     public static ISurrealCommand Kill(Guid liveId) =>
         new SurrealCommand("KILL $live", new Dictionary<string, object?> { ["live"] = liveId });

@@ -15,6 +15,9 @@ public sealed class SurrealCreateBuilder
     private readonly List<string> _setClauses = new();
 
     private string? _returnClause;
+    private string? _contentExpr;
+    private string? _mergeExpr;
+    private string? _patchExpr;
 
     internal SurrealCreateBuilder(string target)
     {
@@ -53,6 +56,40 @@ public sealed class SurrealCreateBuilder
     {
         Arg.NotNullOrWhiteSpace(name);
         _bag.AddNamed(name, value);
+        return this;
+    }
+
+    /// <summary>
+    /// Reemplaza SET con <c>CONTENT $expr</c> — el cuerpo entero del row
+    /// viene dado por un objeto serializado. Mutuamente excluyente con
+    /// <see cref="Set"/>/<see cref="Merge"/>/<see cref="Patch"/>.
+    /// </summary>
+    public SurrealCreateBuilder Content(string expression)
+    {
+        Arg.NotNullOrWhiteSpace(expression);
+        _contentExpr = expression;
+        return this;
+    }
+
+    /// <summary>
+    /// Reemplaza SET con <c>MERGE $expr</c> — mergea el objeto dado sobre
+    /// cualquier contenido existente.
+    /// </summary>
+    public SurrealCreateBuilder Merge(string expression)
+    {
+        Arg.NotNullOrWhiteSpace(expression);
+        _mergeExpr = expression;
+        return this;
+    }
+
+    /// <summary>
+    /// Reemplaza SET con <c>PATCH $expr</c> — aplica un JSON Patch (RFC 6902)
+    /// al contenido existente.
+    /// </summary>
+    public SurrealCreateBuilder Patch(string expression)
+    {
+        Arg.NotNullOrWhiteSpace(expression);
+        _patchExpr = expression;
         return this;
     }
 
@@ -100,12 +137,37 @@ public sealed class SurrealCreateBuilder
 
     public ISurrealCommand Build()
     {
-        if (_setClauses.Count == 0)
+        var hasBody = _setClauses.Count > 0
+            || _contentExpr is not null
+            || _mergeExpr is not null
+            || _patchExpr is not null;
+        if (!hasBody)
         {
-            throw new InvalidOperationException("CREATE requires at least one Set / SetExpr clause.");
+            throw new InvalidOperationException("CREATE requires at least one Set/SetExpr/Content/Merge/Patch clause.");
+        }
+        if (new[] { _setClauses.Count > 0, _contentExpr is not null, _mergeExpr is not null, _patchExpr is not null }
+            .Count(b => b) > 1)
+        {
+            throw new InvalidOperationException("CREATE: SET, CONTENT, MERGE and PATCH are mutually exclusive.");
         }
         var sb = new StringBuilder();
-        sb.Append("CREATE ").Append(_target).Append(" SET ").Append(string.Join(", ", _setClauses));
+        sb.Append("CREATE ").Append(_target);
+        if (_setClauses.Count > 0)
+        {
+            sb.Append(" SET ").Append(string.Join(", ", _setClauses));
+        }
+        else if (_contentExpr is not null)
+        {
+            sb.Append(" CONTENT ").Append(_contentExpr);
+        }
+        else if (_mergeExpr is not null)
+        {
+            sb.Append(" MERGE ").Append(_mergeExpr);
+        }
+        else if (_patchExpr is not null)
+        {
+            sb.Append(" PATCH ").Append(_patchExpr);
+        }
         if (_returnClause is not null) sb.Append(" RETURN ").Append(_returnClause);
         return new SurrealCommand(sb.ToString(), _bag.Snapshot(), _bag.GetPlaceholders());
     }

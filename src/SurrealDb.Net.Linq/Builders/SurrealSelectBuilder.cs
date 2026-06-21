@@ -21,8 +21,14 @@ public sealed class SurrealSelectBuilder
     private readonly List<(string field, SortDirection dir)> _orderBy = new();
     private readonly List<string> _groupBy = new();
     private readonly List<string> _fetch = new();
+    private readonly List<string> _splitOn = new();
     private int? _limit;
     private int? _start;
+    private bool _explain;
+    private bool _explainFull;
+    private bool _parallel;
+    private TimeSpan? _timeout;
+    private DateTimeOffset? _version;
 
     internal SurrealSelectBuilder(string target, bool isLive)
     {
@@ -140,6 +146,50 @@ public sealed class SurrealSelectBuilder
         return this;
     }
 
+    /// <summary>Add a <c>SPLIT ON &lt;field&gt;[, …]</c> clause to split the result on a field.</summary>
+    public SurrealSelectBuilder SplitOn(params string[] fields)
+    {
+        if (fields is null) throw new ArgumentNullException(nameof(fields));
+        foreach (var f in fields) Arg.NotNullOrWhiteSpace(f);
+        _splitOn.AddRange(fields);
+        return this;
+    }
+
+    /// <summary>Add <c>EXPLAIN</c> clause for query profiling.</summary>
+    public SurrealSelectBuilder Explain(bool full = false)
+    {
+        _explain = true;
+        _explainFull = full;
+        return this;
+    }
+
+    /// <summary>Add <c>PARALLEL</c> clause to execute the query in parallel.</summary>
+    public SurrealSelectBuilder Parallel()
+    {
+        _parallel = true;
+        return this;
+    }
+
+    /// <summary>Add a <c>TIMEOUT</c> clause to abort the query after the given duration.</summary>
+    public SurrealSelectBuilder Timeout(TimeSpan duration)
+    {
+        if (duration <= TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(duration), duration, "Timeout must be positive.");
+        _timeout = duration;
+        return this;
+    }
+
+    /// <summary>
+    /// Add <c>VERSION &lt;datetime&gt;</c> for time-travel queries against
+    /// the historical state of the table. Requires change feed enabled on
+    /// the table.
+    /// </summary>
+    public SurrealSelectBuilder Version(DateTimeOffset timestamp)
+    {
+        _version = timestamp;
+        return this;
+    }
+
     public ISurrealCommand Build()
     {
         var sb = new StringBuilder();
@@ -190,9 +240,35 @@ public sealed class SurrealSelectBuilder
         if (_limit is { } limit) sb.Append(" LIMIT ").Append(limit);
         if (_start is { } start) sb.Append(" START ").Append(start);
 
+        if (_splitOn.Count > 0)
+        {
+            sb.Append(" SPLIT ON ").Append(string.Join(", ", _splitOn));
+        }
+
         if (_fetch.Count > 0)
         {
             sb.Append(" FETCH ").Append(string.Join(", ", _fetch));
+        }
+
+        if (_version is { } version)
+        {
+            sb.Append(" VERSION '").Append(version.ToString("O")).Append('\'');
+        }
+
+        if (_explain)
+        {
+            sb.Append(" EXPLAIN");
+            if (_explainFull) sb.Append(" FULL");
+        }
+
+        if (_timeout is { } timeout)
+        {
+            sb.Append(" TIMEOUT ").Append((int)timeout.TotalMilliseconds).Append("ms");
+        }
+
+        if (_parallel)
+        {
+            sb.Append(" PARALLEL");
         }
 
         return new SurrealCommand(sb.ToString(), _bag.Snapshot(), _bag.GetPlaceholders());

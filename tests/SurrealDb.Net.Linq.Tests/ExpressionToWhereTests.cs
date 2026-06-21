@@ -250,8 +250,10 @@ public class ExpressionToWhereTests
     [Fact]
     public void Unsupported_method_call_throws_NotSupportedException_with_actionable_message()
     {
+        // string.PadLeft no está traducido — usa un método realmente no soportado.
+        // (ToUpper/ToLower/Trim/Replace pasaron a estar soportados en 0.6.0.)
         var ex = Assert.Throws<NotSupportedException>(() =>
-            Translate<User>(u => u.Email!.ToUpper() == "X"));
+            Translate<User>(u => u.Email!.PadLeft(10) == "X"));
 
         Assert.Contains("WhereRaw", ex.Message);
     }

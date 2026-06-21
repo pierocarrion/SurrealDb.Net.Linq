@@ -15,6 +15,9 @@ public sealed class SurrealUpdateBuilder
     private readonly List<string> _setClauses = new();
     private readonly WhereClauseBuilder _where;
     private string? _returnClause;
+    private string? _contentExpr;
+    private string? _mergeExpr;
+    private string? _patchExpr;
 
     internal ParameterBag Bag => _bag;
     internal void AddRawWhere(string fragment, string conjunction) => _where.AddRaw(fragment, conjunction);
@@ -98,6 +101,30 @@ public sealed class SurrealUpdateBuilder
         return this;
     }
 
+    /// <summary><c>CONTENT $expr</c> — full body replacement.</summary>
+    public SurrealUpdateBuilder Content(string expression)
+    {
+        Arg.NotNullOrWhiteSpace(expression);
+        _contentExpr = expression;
+        return this;
+    }
+
+    /// <summary><c>MERGE $expr</c> — merge given object onto existing content.</summary>
+    public SurrealUpdateBuilder Merge(string expression)
+    {
+        Arg.NotNullOrWhiteSpace(expression);
+        _mergeExpr = expression;
+        return this;
+    }
+
+    /// <summary><c>PATCH $expr</c> — apply JSON Patch (RFC 6902).</summary>
+    public SurrealUpdateBuilder Patch(string expression)
+    {
+        Arg.NotNullOrWhiteSpace(expression);
+        _patchExpr = expression;
+        return this;
+    }
+
     public SurrealUpdateBuilder ReturnAfter() { _returnClause = "AFTER"; return this; }
     public SurrealUpdateBuilder ReturnBefore() { _returnClause = "BEFORE"; return this; }
     public SurrealUpdateBuilder ReturnNone() { _returnClause = "NONE"; return this; }
@@ -128,13 +155,37 @@ public sealed class SurrealUpdateBuilder
 
     public ISurrealCommand Build()
     {
-        if (_setClauses.Count == 0)
+        var hasBody = _setClauses.Count > 0
+            || _contentExpr is not null
+            || _mergeExpr is not null
+            || _patchExpr is not null;
+        if (!hasBody)
         {
-            throw new InvalidOperationException("UPDATE/UPSERT requires at least one Set / SetExpr clause.");
+            throw new InvalidOperationException("UPDATE/UPSERT requires at least one Set/SetExpr/Content/Merge/Patch clause.");
+        }
+        if (new[] { _setClauses.Count > 0, _contentExpr is not null, _mergeExpr is not null, _patchExpr is not null }
+            .Count(b => b) > 1)
+        {
+            throw new InvalidOperationException("UPDATE/UPSERT: SET, CONTENT, MERGE and PATCH are mutually exclusive.");
         }
         var sb = new StringBuilder();
         sb.Append(_upsert ? "UPSERT " : "UPDATE ").Append(_target);
-        sb.Append(" SET ").Append(string.Join(", ", _setClauses));
+        if (_setClauses.Count > 0)
+        {
+            sb.Append(" SET ").Append(string.Join(", ", _setClauses));
+        }
+        else if (_contentExpr is not null)
+        {
+            sb.Append(" CONTENT ").Append(_contentExpr);
+        }
+        else if (_mergeExpr is not null)
+        {
+            sb.Append(" MERGE ").Append(_mergeExpr);
+        }
+        else if (_patchExpr is not null)
+        {
+            sb.Append(" PATCH ").Append(_patchExpr);
+        }
         if (_where.HasClause) sb.Append(" WHERE ").Append(_where.Render());
         if (_returnClause is not null) sb.Append(" RETURN ").Append(_returnClause);
         return new SurrealCommand(sb.ToString(), _bag.Snapshot(), _bag.GetPlaceholders());
