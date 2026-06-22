@@ -36,7 +36,7 @@ jobs:
       - name: Build
         run: dotnet build SurrealDb.Net.Linq.sln -c Release --no-restore /p:Version=${{ steps.ver.outputs.version }}
 
-      - name: Test (gate)
+      - name: Test
         run: dotnet test SurrealDb.Net.Linq.sln -c Release --no-build
 
       - name: Pack
