@@ -249,10 +249,13 @@ MIT — see [LICENSE](LICENSE).
 
 ## Status
 
-`0.8.x` — early release. The builder surface is the EF-Core-shaped subset
-that's been battle-tested in production (multi-tenant SaaS on SurrealDB v3),
-plus a growing set of SurrealQL clauses (INSERT, RELATE, set operations,
-CONTENT/MERGE/PATCH, SPLIT, EXPLAIN, PARALLEL, TIMEOUT, VERSION).
+`1.0.x` — first **stable** release. The public API is frozen; future changes
+follow strict Semantic Versioning (breaking changes only in 2.0.0).
+
+The builder surface is the EF-Core-shaped subset that's been battle-tested in
+production (multi-tenant SaaS on SurrealDB v3), plus a growing set of
+SurrealQL clauses (INSERT, RELATE, set operations, CONTENT/MERGE/PATCH,
+SPLIT, EXPLAIN, PARALLEL, TIMEOUT, VERSION).
 
 `Expression<Func<T, bool>>` translation covers comparisons, logical ops,
 null checks, member chains, `string.Contains/StartsWith/EndsWith/ToLower/

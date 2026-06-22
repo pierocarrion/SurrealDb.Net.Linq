@@ -10,11 +10,11 @@
 
   <PropertyGroup Label="Package">
     <PackageId>SurrealDb.Net.Linq</PackageId>
-    <Version>0.8.0</Version>
+    <Version>1.0.0</Version>
     <Description>Fluent, parameter-safe query builder for SurrealDB. Plugs into the official SurrealDb.Net SDK and provides SELECT / LIVE SELECT / CREATE / UPDATE / UPSERT / DELETE / KILL builders plus execution extensions on ISurrealDbClient. Every literal becomes a CBOR-bound parameter — no SQL injection, no hand-spliced SurrealQL. Also ships CBOR plumbing (`UseSurrealSnakeCase()`) that restores the snake_case naming convention and dynamic-map decoder that SurrealDb.Net dropped in 0.10.x.</Description>
     <PackageTags>surrealdb;surrealdb-v3;surreal;linq;query-builder;parameterized-query;orm;netcore;dotnet;cbor</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>https://github.com/pierocarrion/SurrealDb.Net.Linq/blob/master/CHANGELOG.md#080---2026-06-21</PackageReleaseNotes>
+    <PackageReleaseNotes>https://github.com/pierocarrion/SurrealDb.Net.Linq/blob/master/CHANGELOG.md#100---2026-06-22</PackageReleaseNotes>
     <!--
       TODO(0.5.0): PackageIcon. Necesitamos el PNG del icono en assets/icon.png
       antes de activar la property. Por ahora lo dejamos sin configurar para

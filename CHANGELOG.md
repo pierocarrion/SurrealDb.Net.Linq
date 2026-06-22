@@ -6,6 +6,31 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-06-22
+
+Primera release **estable**. Marca el milestone tras 5 fases de estabilización,
+tipado, expansion de SurrealQL surface, modularidad CBOR y tooling. La API
+pública se considera congelada en su forma actual; cambios futuros siguen
+Semantic Versioning estricto (breaking changes solo en 2.0.0).
+
+### Scope cubierto por 1.0.0
+- 260 tests cubriendo builders, visitor, extensiones y CBOR.
+- 31 archivos source (librería + internals).
+- 4 TFMs: net8.0, net9.0, net10.0, netstandard2.1.
+- CI matrix en ubuntu/windows/macos + CodeQL + Dependabot.
+- Publish workflow con gate de tests antes de push a NuGet.
+
+### Cambios desde 0.8.0
+- Sin cambios funcionales. Solo bump de versión para marcar el milestone
+  estable. Toda la funcionalidad ya estaba en 0.8.0 (consolidada de las
+  fases 0.5.0-0.8.0).
+
+### Notas de migración desde 0.4.x
+- **Sin breaking changes** para código existente. Todo lo añadido en 0.5.0-1.0.0
+  es aditivo o bug fix interno.
+- Recomendado (no obligatorio): migrar `ExecuteScalarAsync`/`ExecuteCountAsync`
+  a las variantes `*StrictAsync` que propagan errores.
+
 ## [0.8.0] - 2026-06-21
 
 ### Added
@@ -186,7 +211,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Icono del paquete NuGet** pospuesto a 0.5.0. Falta el PNG físico en
   `assets/icon.png` y el upload se hace desde fuera del chat.
 
-[Unreleased]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.8.0...v1.0.0
 [0.8.0]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/pierocarrion/SurrealDb.Net.Linq/compare/v0.5.0...v0.6.0
